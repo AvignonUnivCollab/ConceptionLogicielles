@@ -20,14 +20,11 @@ import tempfile
 
 # CONVERSION PDF → TEXTE
 def convert_pdftotext(pdf_path: str) -> str:
-    """Conversion avec pdftotext -layout (poppler-utils)."""
     with tempfile.NamedTemporaryFile(suffix=".txt", delete=False) as tmp:
         tmp_path = tmp.name
     try:
-        subprocess.run(
-            ["pdftotext", "-layout", pdf_path, tmp_path],
-            check=True, capture_output=True
-        )
+        subprocess.run(["pdftotext", "-layout", pdf_path, tmp_path],
+                       check=True, capture_output=True)
         with open(tmp_path, "r", encoding="utf-8", errors="replace") as f:
             return f.read()
     finally:
@@ -36,99 +33,126 @@ def convert_pdftotext(pdf_path: str) -> str:
 
 
 def convert_pdf2txt(pdf_path: str) -> str:
-    """Conversion avec pdf2txt.py (pdfminer.six)."""
-    result = subprocess.run(
-        ["pdf2txt.py", pdf_path],
-        capture_output=True, text=True, errors="replace"
-    )
+    result = subprocess.run(["pdf2txt.py", pdf_path],
+                            capture_output=True, text=True, errors="replace")
     return result.stdout
 
 
-# NETTOYAGE DU TEXTE
+# NETTOYAGE
 def nettoyer_texte(texte: str) -> str:
-    """Nettoie le texte extrait : retire les headers/footers de pages."""
     lignes = texte.split("\n")
-    lignes_propres = []
+    propres = []
     for ligne in lignes:
-        # Retire les numéros de page isolés
         if re.match(r"^\s*\d+\s*$", ligne):
             continue
-        # Retire les sauts de page
-        if "\f" in ligne:
-            ligne = ligne.replace("\f", "")
-        lignes_propres.append(ligne)
-    return "\n".join(lignes_propres)
+        propres.append(ligne.replace("\f", ""))
+    return "\n".join(propres)
 
 
-# PARSEUR DE SECTIONS
+def reconstruire_ieee(texte: str) -> str:
+    """'I NTRODUCTION' → 'INTRODUCTION',  'E XPERIMENTS' → 'EXPERIMENTS'"""
+    return re.sub(
+        r'\b([A-Z]) ([A-Z][A-Z ]{1,20}[A-Z])\b',
+        lambda m: m.group(1) + m.group(2).replace(" ", ""),
+        texte
+    )
 
-# Mots-clés pour chaque section (ordre de priorité)
-SECTIONS = {
-    "titre":        [],   # toujours la première ligne significative
-    "auteurs":      [],   # juste après le titre
-    "abstract":     [r"abstract", r"résumé", r"summary"],
-    "introduction": [r"introduction", r"\d[\.\s]+introduction"],
-    "corps":        [r"method", r"méthode", r"approach", r"approche",
-                     r"background", r"related work", r"travaux", r"système",
-                     r"system", r"model", r"modèle", r"architecture",
-                     r"framework", r"formulation", r"proposition",
-                     r"\d[\.\s]+(method|approach|background|system)"],
-    "resultats":    [r"result", r"résultat", r"experiment", r"expérience",
-                     r"evaluation", r"évaluation",
-                     r"\d[\.\s]+(result|experiment|evaluation)"],
-    "conclusion":   [r"conclusion", r"discussion.*future",
-                     r"conclusion.*future", r"future work",
-                     r"\d[\.\s]+conclusion"],
-    "discussion":   [r"discussion", r"analyse", r"analysis"],
-    "bibliographie":[r"references?", r"bibliograph", r"bibliography"],
+
+# CLASSIFICATION DES SECTIONS
+# Mots-clés associés à chaque section canonique
+MOTS_CLES = {
+    "abstract":     ["abstract", "résumé", "summary"],
+    "introduction": ["introduction"],
+    "corps":        ["method", "méthode", "approach", "approche", "background",
+                     "related work", "related works", "travaux connexes",
+                     "système", "system", "model", "modèle", "architecture",
+                     "framework", "formulation", "methodology", "méthodologie",
+                     "state of the art", "industrial context",
+                     "single-document summarization", "multi-document summarization",
+                     "sentence boundary detection", "rst spanish treebank",
+                     "resources and statistics", "word representations"],
+    "conclusion":   ["conclusion", "conclusions", "future work",
+                     "conclusion and future", "conclusion and perspectives",
+                     "discussion and future"],
+    "discussion":   ["discussion", "analyse", "analysis"],
+    "bibliographie": ["reference", "references", "bibliograph", "bibliography"],
 }
 
+# Sections qui ne doivent PAS être corps mais corps (sous-sections corps)
+SOUS_SECTIONS_CORPS = [
+    "early work", "machine learning", "naive-bayes", "hidden markov",
+    "log-linear", "neural network", "deep natural", "abstraction",
+    "topic-driven", "graph spreading", "centroid", "multilingual",
+    "short summar", "sentence compress", "sequential document",
+    "selecting a corpus", "instantiating", "designing the interface",
+    "selecting and training", "managing the annotation", "validating",
+    "delivering", "system overview", "normalization", "linguistic patterns",
+    "pruning step", "ranking step", "experimental protocol",
+    "window-boundaries", "general reference",
+]
 
-def detecter_section(ligne: str) -> str | None:
+
+def classer_titre(titre: str) -> str | None:
     """
-    Détecte si une ligne est un titre de section.
-    Retourne le nom de section ou None.
-    Gère les articles simple et double-colonne.
+    Retourne la clé de section correspondant au titre, ou None.
     """
-    ligne_stripped = ligne.strip()
+    t = titre.lower().strip()
 
-    # Ignore les lignes vides ou trop longues pour être un titre
-    if not ligne_stripped or len(ligne_stripped) > 120:
-        return None
+    # Sous-sections → corps (on les ignore comme nouvelles sections)
+    for ss in SOUS_SECTIONS_CORPS:
+        if ss in t:
+            return None  # ignore
 
-    # Normalise les espaces multiples (double-colonne : "1   Introduction")
-    ligne_norm = re.sub(r"\s+", " ", ligne_stripped)
-    ligne_lower = ligne_norm.lower()
-
-    for nom_section, patterns in SECTIONS.items():
-        if nom_section in ("titre", "auteurs"):
-            continue
-        for pattern in patterns:
-            # Titre seul : "Abstract", "Introduction", "References"
-            if re.match(r"^" + pattern + r"[\s\.\:]*$", ligne_lower, re.IGNORECASE):
-                return nom_section
-            # Section numérotée : "1 Introduction", "2. Method", "3.1 Results"
-            if re.match(r"^\d+[\.\s]+" + pattern + r"[\s\.\:]*$", ligne_lower, re.IGNORECASE):
-                return nom_section
-            # Double-colonne : la moitié gauche seulement est le titre
-            # ex : "1   Introduction                    redundancy with..."
-            # On prend la partie gauche (avant grand espace)
-            moitie_gauche = re.split(r"\s{4,}", ligne_stripped)[0].strip().lower()
-            moitie_gauche = re.sub(r"\s+", " ", moitie_gauche)
-            if moitie_gauche and re.match(r"^(\d+[\.\s]+)?" + pattern + r"[\s\.\:]*$",
-                                          moitie_gauche, re.IGNORECASE):
-                return nom_section
+    for section, mots in MOTS_CLES.items():
+        for mot in mots:
+            if mot in t or t.startswith(mot):
+                return section
 
     return None
 
 
-def print_hi(name):
-    # Use a breakpoint in the code line below to debug your script.
-    print(f'Hi, {name}')  # Press Ctrl+F8 to toggle the breakpoint.
+def detecter_section(ligne: str) -> str | None:
+    """
+    Détecte si une ligne est un titre de section principal.
+    Retourne la clé de section ou None.
+    """
+    stripped = ligne.strip()
+    if not stripped or len(stripped) > 150:
+        return None
 
+    # Reconstruire les mots IEEE espacés
+    norm = reconstruire_ieee(stripped)
 
-# Press the green button in the gutter to run the script.
-if __name__ == '__main__':
-    print_hi('PyCharm')
+    # Extraire la partie gauche (avant grand espace = double colonne)
+    gauche = re.split(r"\s{4,}", norm)[0].strip()
 
-# See PyCharm help at https://www.jetbrains.com/help/pycharm/
+    # Cas 1 : titre seul sans numéro
+    #   ex : "Abstract", "Introduction", "References"
+    if re.match(r"^[a-zA-ZÀ-ÿ][a-zA-ZÀ-ÿ\s\-]{1,60}$", gauche):
+        sec = classer_titre(gauche)
+        if sec:
+            return sec
+
+    # Cas 2 : numéro arabe + titre
+    #   ex : "1 Introduction", "2.1 Early Work", "3     The RST..."
+    m = re.match(r"^(\d+[\.\d]*)\s+(.+)$", gauche)
+    if m:
+        titre = m.group(2).strip()
+        sec = classer_titre(titre)
+        if sec:
+            return sec
+
+    # Cas 3 : numéro romain IEEE + titre
+    #   ex : "I. INTRODUCTION", "VI. EXPERIMENTS AND RESULTS"
+    m = re.match(r"^([IVXivx]+)[\.\s]+(.+)$", gauche)
+    if m:
+        titre = m.group(2).strip()
+        sec = classer_titre(titre)
+        if sec:
+            return sec
+
+    # Cas 4 : Abstract inline "Abstract—..." ou "Abstract. ..."
+    if re.match(r"^abstract[\s\.\—\–\:]", stripped, re.IGNORECASE):
+        return "abstract"
+
+    return None
