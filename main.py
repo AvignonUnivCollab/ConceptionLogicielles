@@ -152,3 +152,41 @@ def detecter_section(ligne: str) -> str | None:
         return "abstract"
 
     return None
+
+
+# ─────────────────────────────────────────────
+# PARSING PRINCIPAL
+# ─────────────────────────────────────────────
+
+SECTIONS_ORDRE = ["titre", "auteurs", "abstract", "introduction",
+                  "corps", "conclusion", "discussion", "bibliographie"]
+
+
+def est_titre_article(ligne: str) -> bool:
+    """
+    Vérifie de manière heuristique si une ligne a la forme d'un titre d'article.
+    """
+    s = ligne.strip()
+    if not s or len(s) < 5:
+        return False
+    if s.endswith((".com", ".fr", ".org", "@")):
+        return False
+    mots = s.split()
+    return 2 <= len(mots) <= 20
+
+
+def parser_article(texte: str) -> dict[str, str]:
+    """
+    Squelette de base pour extraire les différentes sections.
+    """
+    sections = {k: "" for k in SECTIONS_ORDRE}
+    texte = nettoyer_texte(texte)
+    lignes = texte.split("\n")
+
+    # TODO : Implémenter la passe 1 (Extraction du titre et des auteurs)
+    
+    # TODO : Implémenter la passe 2 (Boucle sur les sections canoniques)
+
+    return sections
+
+
