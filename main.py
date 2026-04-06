@@ -98,7 +98,6 @@ def classer_titre(titre: str) -> str | None:
     """
     t = titre.lower().strip()
 
-    # Sous-sections → corps (on les ignore comme nouvelles sections)
     for ss in SOUS_SECTIONS_CORPS:
         if ss in t:
             return None  # ignore
@@ -123,18 +122,16 @@ def detecter_section(ligne: str) -> str | None:
     # Reconstruire les mots IEEE espacés
     norm = reconstruire_ieee(stripped)
 
-    # Extraire la partie gauche (avant grand espace = double colonne)
+    # Extraire la partie gauche
     gauche = re.split(r"\s{4,}", norm)[0].strip()
 
     # Cas 1 : titre seul sans numéro
-    #   ex : "Abstract", "Introduction", "References"
     if re.match(r"^[a-zA-ZÀ-ÿ][a-zA-ZÀ-ÿ\s\-]{1,60}$", gauche):
         sec = classer_titre(gauche)
         if sec:
             return sec
 
     # Cas 2 : numéro arabe + titre
-    #   ex : "1 Introduction", "2.1 Early Work", "3     The RST..."
     m = re.match(r"^(\d+[\.\d]*)\s+(.+)$", gauche)
     if m:
         titre = m.group(2).strip()
@@ -143,7 +140,6 @@ def detecter_section(ligne: str) -> str | None:
             return sec
 
     # Cas 3 : numéro romain IEEE + titre
-    #   ex : "I. INTRODUCTION", "VI. EXPERIMENTS AND RESULTS"
     m = re.match(r"^([IVXivx]+)[\.\s]+(.+)$", gauche)
     if m:
         titre = m.group(2).strip()
