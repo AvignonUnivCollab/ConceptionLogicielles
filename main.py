@@ -207,8 +207,60 @@ def parser_article(texte: str) -> dict[str, str]:
             sections["titre"] = " ".join(titre_lignes)
             titre_trouve = True
         break
-    
-    # TODO : Implémenter la passe 2 (Boucle sur les sections canoniques du corps)
+
+    # ── Passe 2 : parsing du corps et des abstracts ──
+    section_courante = None
+    contenu_courant = []
+
+    for ligne in lignes:
+        stripped = ligne.strip()
+
+        nom_sec = detecter_section(ligne)
+        if nom_sec:
+            # Sauvegarde de la section précédente quand on en croise une nouvelle
+            if section_courante and contenu_courant:
+                contenu = "\n".join(contenu_courant).strip()
+                if contenu:
+                    if not sections[section_courante]:
+                        sections[section_courante] = contenu
+                    else:
+                        sections[section_courante] += "\n\n" + contenu
+            section_courante = nom_sec
+            
+            # Gérer l'abstract collé sur une ligne (ex: "Abstract— text...")
+            if nom_sec == "abstract":
+                reste = re.sub(r"^abstract[\s\.\—\–\:\*]+", "", stripped,
+                               flags=re.IGNORECASE).strip()
+                contenu_courant = [reste] if reste else []
+            else:
+                contenu_courant = []
+            continue
+
+        # Gérer l'abstract seul et centré
+        if re.match(r"^\s*abstract\s*$", stripped, re.IGNORECASE):
+            if section_courante and contenu_courant:
+                contenu = "\n".join(contenu_courant).strip()
+                if contenu and not sections[section_courante]:
+                    sections[section_courante] = contenu
+            section_courante = "abstract"
+            contenu_courant = []
+            continue
+
+        # Filtre anti-header/footer (Springer, etc.)
+        if section_courante and re.match(r"^\s{10,}", ligne) and len(stripped) > 30:
+            if re.search(r"[A-Z]\.\-[A-Z]\.", stripped):
+                continue
+
+        if section_courante:
+            contenu_courant.append(ligne)
+
+    # Sauvegarder la toute dernière section de l'article (souvent 'bibliographie')
+    if section_courante and contenu_courant:
+        contenu = "\n".join(contenu_courant).strip()
+        if contenu and not sections[section_courante]:
+            sections[section_courante] = contenu
+
+    # TODO : ajouter le post-traitement et le formater_sortie
 
     return sections
 
