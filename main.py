@@ -260,8 +260,45 @@ def parser_article(texte: str) -> dict[str, str]:
         if contenu and not sections[section_courante]:
             sections[section_courante] = contenu
 
-    # TODO : ajouter le post-traitement et le formater_sortie
+    # Post-traitement : on enlève les trous / sauts de lignes abusifs
+    for k in sections:
+        if sections[k]:
+            sections[k] = re.sub(r"\n{3,}", "\n\n", sections[k]).strip()
 
     return sections
+
+
+# ─────────────────────────────────────────────
+# FORMATAGE DE LA SORTIE
+# ─────────────────────────────────────────────
+
+LABELS = {
+    "titre":        "Titre",
+    "auteurs":      "Auteurs",
+    "abstract":     "Abstract",
+    "introduction": "Introduction",
+    "corps":        "Corps",
+    "resultats":    "Résultats",
+    "conclusion":   "Conclusion",
+    "discussion":   "Discussion",
+    "bibliographie": "Bibliographie",
+}
+
+
+def formater_sortie(sections: dict[str, str]) -> str:
+    """
+    Transforme le dictionnaire des sections en un texte propre et indenté.
+    """
+    lignes = []
+    for cle, label in LABELS.items():
+        contenu = sections.get(cle, "").strip()
+        if contenu:
+            lignes.append(f"{label} :")
+            # Indentation du contenu pour que ça soit bien lisible
+            for l in contenu.split("\n"):
+                lignes.append(f"    {l}")
+            lignes.append("")
+    
+    return "\n".join(lignes)
 
 
