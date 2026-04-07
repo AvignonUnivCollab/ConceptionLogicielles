@@ -292,6 +292,16 @@ def formater_sortie(sections: dict[str, str]) -> str:
     
     return "\n".join(lignes)
 
+
+def afficher_statistiques(sections: dict[str, str]):
+    print("\n── Statistiques ──────────────────────────────")
+    trouvees = [k for k, v in sections.items() if v.strip()]
+    manquantes = [k for k, v in sections.items() if not v.strip()]
+    print(f"  Sections trouvées  ({len(trouvees)}) : {', '.join(trouvees)}")
+    if manquantes:
+        print(f"  Sections absentes  ({len(manquantes)}) : {', '.join(manquantes)}")
+    print("──────────────────────────────────────────────\n")
+
 # COMPARAISON
 
 def comparer_outils(pdf_path: str):
@@ -358,6 +368,9 @@ def main():
     print("Parsing des sections...", file=sys.stderr)
     sections = parser_article(texte_brut)
     sortie = formater_sortie(sections)
+
+    if args.stats:
+        afficher_statistiques(sections)
 
     fichier_sortie = args.sortie or (
         os.path.splitext(os.path.basename(args.pdf))[0] + "_parse.txt"
