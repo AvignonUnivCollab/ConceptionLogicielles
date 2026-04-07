@@ -177,15 +177,38 @@ def est_titre_article(ligne: str) -> bool:
 
 def parser_article(texte: str) -> dict[str, str]:
     """
-    Squelette de base pour extraire les différentes sections.
+    Extraction structurée des sections du document
     """
     sections = {k: "" for k in SECTIONS_ORDRE}
     texte = nettoyer_texte(texte)
     lignes = texte.split("\n")
 
-    # TODO : Implémenter la passe 1 (Extraction du titre et des auteurs)
+    # ── Passe 1 : extraction titre ──
+    titre_trouve = False
+    for i, ligne in enumerate(lignes):
+        stripped = ligne.strip()
+        if not stripped:
+            continue
+        if not titre_trouve and est_titre_article(ligne):
+            titre_lignes = [stripped]
+            j = i + 1
+            while j < len(lignes) and j < i + 5:
+                nl = lignes[j].strip()
+                if not nl:
+                    j += 1; continue
+                # Arrêt si on croise une section ou l'abstract
+                if detecter_section(nl) or re.match(r"^abstract[\s\.\—\–\:]?", nl, re.IGNORECASE):
+                    break
+                if est_titre_article(lignes[j]) and not re.search(r"@|\d{4,}", nl):
+                    titre_lignes.append(nl)
+                    j += 1
+                else:
+                    break
+            sections["titre"] = " ".join(titre_lignes)
+            titre_trouve = True
+        break
     
-    # TODO : Implémenter la passe 2 (Boucle sur les sections canoniques)
+    # TODO : Implémenter la passe 2 (Boucle sur les sections canoniques du corps)
 
     return sections
 
