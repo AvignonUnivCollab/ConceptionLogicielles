@@ -1,13 +1,8 @@
-# This is a sample Python script.
-
-# Press Maj+F10 to execute it or replace it with your code.
-# Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
 #!/usr/bin/env python3
 """
 Parseur d'articles scientifiques en format texte
 Projet Scrum - Sprint 1
 LIA / Avignon Université
-
 """
 
 import re
@@ -98,6 +93,7 @@ def classer_titre(titre: str) -> str | None:
     """
     t = titre.lower().strip()
 
+    # Sous-sections → corps (on les ignore comme nouvelles sections)
     for ss in SOUS_SECTIONS_CORPS:
         if ss in t:
             return None  # ignore
@@ -122,16 +118,18 @@ def detecter_section(ligne: str) -> str | None:
     # Reconstruire les mots IEEE espacés
     norm = reconstruire_ieee(stripped)
 
-    # Extraire la partie gauche
+    # Extraire la partie gauche (avant grand espace = double colonne)
     gauche = re.split(r"\s{4,}", norm)[0].strip()
 
     # Cas 1 : titre seul sans numéro
+    #   ex : "Abstract", "Introduction", "References"
     if re.match(r"^[a-zA-ZÀ-ÿ][a-zA-ZÀ-ÿ\s\-]{1,60}$", gauche):
         sec = classer_titre(gauche)
         if sec:
             return sec
 
     # Cas 2 : numéro arabe + titre
+    #   ex : "1 Introduction", "2.1 Early Work", "3     The RST..."
     m = re.match(r"^(\d+[\.\d]*)\s+(.+)$", gauche)
     if m:
         titre = m.group(2).strip()
@@ -140,6 +138,7 @@ def detecter_section(ligne: str) -> str | None:
             return sec
 
     # Cas 3 : numéro romain IEEE + titre
+    #   ex : "I. INTRODUCTION", "VI. EXPERIMENTS AND RESULTS"
     m = re.match(r"^([IVXivx]+)[\.\s]+(.+)$", gauche)
     if m:
         titre = m.group(2).strip()
@@ -163,9 +162,6 @@ SECTIONS_ORDRE = ["titre", "auteurs", "abstract", "introduction",
 
 
 def est_titre_article(ligne: str) -> bool:
-    """
-    Vérifie de manière heuristique si une ligne a la forme d'un titre d'article.
-    """
     s = ligne.strip()
     if not s or len(s) < 5:
         return False
@@ -176,15 +172,13 @@ def est_titre_article(ligne: str) -> bool:
 
 
 def parser_article(texte: str) -> dict[str, str]:
-    """
-    Extraction structurée des sections du document
-    """
     sections = {k: "" for k in SECTIONS_ORDRE}
     texte = nettoyer_texte(texte)
     lignes = texte.split("\n")
 
     # ── Passe 1 : extraction titre ──
     titre_trouve = False
+    idx_fin_titre = 0
     for i, ligne in enumerate(lignes):
         stripped = ligne.strip()
         if not stripped:
@@ -196,8 +190,9 @@ def parser_article(texte: str) -> dict[str, str]:
                 nl = lignes[j].strip()
                 if not nl:
                     j += 1; continue
-                # Arrêt si on croise une section ou l'abstract
-                if detecter_section(nl) or re.match(r"^abstract[\s\.\—\–\:]?", nl, re.IGNORECASE):
+                if detecter_section(nl):
+                    break
+                if re.match(r"^abstract[\s\.\—\–\:]?", nl, re.IGNORECASE):
                     break
                 if est_titre_article(lignes[j]) and not re.search(r"@|\d{4,}", nl):
                     titre_lignes.append(nl)
@@ -206,9 +201,10 @@ def parser_article(texte: str) -> dict[str, str]:
                     break
             sections["titre"] = " ".join(titre_lignes)
             titre_trouve = True
+            idx_fin_titre = j
         break
 
-    # ── Passe 2 : parsing du corps et des abstracts ──
+    # ── Passe 2 : sections ──
     section_courante = None
     contenu_courant = []
 
@@ -217,7 +213,7 @@ def parser_article(texte: str) -> dict[str, str]:
 
         nom_sec = detecter_section(ligne)
         if nom_sec:
-            # Sauvegarde de la section précédente quand on en croise une nouvelle
+            # Sauvegarder section précédente
             if section_courante and contenu_courant:
                 contenu = "\n".join(contenu_courant).strip()
                 if contenu:
@@ -226,8 +222,7 @@ def parser_article(texte: str) -> dict[str, str]:
                     else:
                         sections[section_courante] += "\n\n" + contenu
             section_courante = nom_sec
-            
-            # Gérer l'abstract collé sur une ligne (ex: "Abstract— text...")
+            # Abstract inline : garder le texte après le mot-clé
             if nom_sec == "abstract":
                 reste = re.sub(r"^abstract[\s\.\—\–\:\*]+", "", stripped,
                                flags=re.IGNORECASE).strip()
@@ -236,7 +231,7 @@ def parser_article(texte: str) -> dict[str, str]:
                 contenu_courant = []
             continue
 
-        # Gérer l'abstract seul et centré
+        # Abstract seul sur sa ligne (centré)
         if re.match(r"^\s*abstract\s*$", stripped, re.IGNORECASE):
             if section_courante and contenu_courant:
                 contenu = "\n".join(contenu_courant).strip()
@@ -246,9 +241,10 @@ def parser_article(texte: str) -> dict[str, str]:
             contenu_courant = []
             continue
 
-        # Filtre anti-header/footer (Springer, etc.)
+        # Sauter les lignes de header de page (ex: "WiSeBE: Window-Based...")
         if section_courante and re.match(r"^\s{10,}", ligne) and len(stripped) > 30:
-            if re.search(r"[A-Z]\.\-[A-Z]\.", stripped):
+            # ligne très indentée = probable header de page dans Springer
+            if re.search(r"[A-Z]\.\-[A-Z]\.", stripped):  # pattern auteur
                 continue
 
         if section_courante:
@@ -269,7 +265,7 @@ def parser_article(texte: str) -> dict[str, str]:
 
 
 # ─────────────────────────────────────────────
-# FORMATAGE DE LA SORTIE
+# FORMATAGE
 # ─────────────────────────────────────────────
 
 LABELS = {
