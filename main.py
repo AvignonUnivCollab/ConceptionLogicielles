@@ -200,7 +200,7 @@ def parser_article(texte: str) -> dict[str, str]:
             sections["titre"] = " ".join(titre_lignes)
             titre_trouve = True
             idx_fin_titre = j
-        break
+            break
 
     # ── Passe 2 : sections ──
     section_courante = None
