@@ -206,7 +206,7 @@ def parser_article(texte: str) -> dict[str, str]:
     section_courante = None
     contenu_courant = []
 
-    for ligne in lignes:
+    for ligne in lignes[idx_fin_titre:]:
         stripped = ligne.strip()
 
         nom_sec = detecter_section(ligne)
