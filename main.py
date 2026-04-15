@@ -8,6 +8,7 @@ LIA / Avignon Université
 import re
 import sys
 import os
+import shutil
 import argparse
 import subprocess
 import tempfile
@@ -213,9 +214,13 @@ def parser_article(texte: str) -> dict[str, str]:
                 break
             if re.match(r"^abstract[\s\.\—\–\:]?", l, re.IGNORECASE):
                 break
+            # Heuristique : ligne d'auteurs contient des noms propres, virgules, "and"
+            # Exclure les lignes qui ressemblent à des affiliations (université, lab, etc.)
+            if re.search(r"@|universit|laboratoire|department|institute|lab\b|faculty", l, re.IGNORECASE):
+                continue
             # Ligne probable d'auteurs : mots capitalisés séparés par virgules ou "and"
             if re.match(r"^[A-ZÀ-Ÿ]", l) and len(l) < 200:
-                if re.search(r",|\band\b|·|;", l):
+                if re.search(r",|\band\b|·|;", l) or re.match(r"^([A-ZÀ-Ÿ][a-zà-ÿ]+[\s\.\-]*){2,6}$", l):
                     auteur_lignes.append(l)
         if auteur_lignes:
             sections["auteurs"] = " ".join(auteur_lignes)
