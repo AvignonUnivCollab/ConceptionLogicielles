@@ -316,6 +316,23 @@ def formater_sortie(sections: dict[str, str]) -> str:
     return "\n".join(lignes)
 
 
+def une_ligne(texte: str) -> str:
+    """Transforme un texte multi-lignes en une seule ligne."""
+    return re.sub(r"\s+", " ", texte).strip()
+
+
+def formater_sortie_sprint2(sections: dict[str, str], nom_fichier: str) -> str:
+    """
+    Format Sprint 2 : fichier, titre, auteurs, résumé — chacun sur une ligne.
+    """
+    lignes = []
+    lignes.append(f"Fichier : {nom_fichier}")
+    lignes.append(f"Titre : {une_ligne(sections.get('titre', ''))}")
+    lignes.append(f"Auteurs : {une_ligne(sections.get('auteurs', ''))}")
+    lignes.append(f"Resume : {une_ligne(sections.get('abstract', ''))}")
+    return "\n".join(lignes)
+
+
 def afficher_statistiques(sections: dict[str, str]):
     print("\n── Statistiques ──────────────────────────────")
     trouvees = [k for k, v in sections.items() if v.strip()]
