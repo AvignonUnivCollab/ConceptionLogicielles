@@ -202,6 +202,24 @@ def parser_article(texte: str) -> dict[str, str]:
             idx_fin_titre = j
             break
 
+    # ── Passe 1.5 : extraction auteurs (entre titre et abstract) ──
+    if titre_trouve:
+        auteur_lignes = []
+        for i in range(idx_fin_titre, min(idx_fin_titre + 15, len(lignes))):
+            l = lignes[i].strip()
+            if not l:
+                continue
+            if detecter_section(l):
+                break
+            if re.match(r"^abstract[\s\.\—\–\:]?", l, re.IGNORECASE):
+                break
+            # Ligne probable d'auteurs : mots capitalisés séparés par virgules ou "and"
+            if re.match(r"^[A-ZÀ-Ÿ]", l) and len(l) < 200:
+                if re.search(r",|\band\b|·|;", l):
+                    auteur_lignes.append(l)
+        if auteur_lignes:
+            sections["auteurs"] = " ".join(auteur_lignes)
+
     # ── Passe 2 : sections ──
     section_courante = None
     contenu_courant = []
