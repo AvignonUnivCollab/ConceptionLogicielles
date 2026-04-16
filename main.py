@@ -312,7 +312,7 @@ def formater_sortie(sections: dict[str, str]) -> str:
             for l in contenu.split("\n"):
                 lignes.append(f"    {l}")
             lignes.append("")
-    
+
     return "\n".join(lignes)
 
 
@@ -379,6 +379,69 @@ def comparer_outils(pdf_path: str):
         meilleur = min(resultats, key=lambda x: resultats[x]["mots_colles"])
         print(f"Outil recommandé : {meilleur}")
     print()
+
+
+
+def traiter_dossier(dossier_pdf: str, outil: str = "pdftotext") -> None:
+    """
+    Parcourt dossier_pdf, parse chaque PDF et écrit les .txt dans
+    dossier_pdf/output/ (le sous-dossier est effacé s'il existe).
+    """
+    if not os.path.isdir(dossier_pdf):
+        print(f"Erreur : dossier introuvable : {dossier_pdf}", file=sys.stderr)
+        sys.exit(1)
+
+    # Sous-dossier de sortie
+    dossier_sortie = os.path.join(dossier_pdf, "output")
+
+    if os.path.exists(dossier_sortie):
+        print(f"Suppression de l'ancien dossier : {dossier_sortie}", file=sys.stderr)
+        shutil.rmtree(dossier_sortie)
+
+    os.makedirs(dossier_sortie)
+    print(f"Dossier de sortie créé : {dossier_sortie}", file=sys.stderr)
+
+    # Lister les PDFs
+    pdfs = sorted([
+        f for f in os.listdir(dossier_pdf)
+        if f.lower().endswith(".pdf")
+    ])
+
+    if not pdfs:
+        print("Aucun fichier PDF trouvé dans le dossier.", file=sys.stderr)
+        return
+
+    convertir = convert_pdf2txt if outil == "pdf2txt" else convert_pdftotext
+    ok = 0
+    erreurs = []
+
+    for nom_pdf in pdfs:
+        chemin_pdf = os.path.join(dossier_pdf, nom_pdf)
+        nom_base = os.path.splitext(nom_pdf)[0]
+        chemin_txt = os.path.join(dossier_sortie, nom_base + ".txt")
+
+        print(f"  : {nom_pdf}", file=sys.stderr, end=" ")
+
+        try:
+            texte_brut = convertir(chemin_pdf)
+            sections = parser_article(texte_brut)
+            sortie = formater_sortie_sprint2(sections, nom_pdf)
+
+            with open(chemin_txt, "w", encoding="utf-8") as f:
+                f.write(sortie + "\n")
+
+            print("", file=sys.stderr)
+            ok += 1
+
+        except Exception as e:
+            print(f"x ERREUR : {e}", file=sys.stderr)
+            erreurs.append(nom_pdf)
+
+    print(f"\n{'─'*50}", file=sys.stderr)
+    print(f"Traités : {ok}/{len(pdfs)}  |  Erreurs : {len(erreurs)}", file=sys.stderr)
+    if erreurs:
+        print(f"Fichiers en erreur : {', '.join(erreurs)}", file=sys.stderr)
+    print(f"Sorties dans : {dossier_sortie}", file=sys.stderr)
 
 # POINT D'ENTRÉE
 
