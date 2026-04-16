@@ -388,7 +388,7 @@ def traiter_dossier(dossier_pdf: str, outil: str = "pdftotext") -> None:
     dossier_pdf/output/ (le sous-dossier est effacé s'il existe).
     """
     if not os.path.isdir(dossier_pdf):
-        print(f"Erreur : dossier introuvable → {dossier_pdf}", file=sys.stderr)
+        print(f"Erreur : dossier introuvable : {dossier_pdf}", file=sys.stderr)
         sys.exit(1)
 
     # Sous-dossier de sortie
@@ -414,6 +414,28 @@ def traiter_dossier(dossier_pdf: str, outil: str = "pdftotext") -> None:
     convertir = convert_pdf2txt if outil == "pdf2txt" else convert_pdftotext
     ok = 0
     erreurs = []
+
+    for nom_pdf in pdfs:
+        chemin_pdf = os.path.join(dossier_pdf, nom_pdf)
+        nom_base = os.path.splitext(nom_pdf)[0]
+        chemin_txt = os.path.join(dossier_sortie, nom_base + ".txt")
+
+        print(f"  : {nom_pdf}", file=sys.stderr, end=" ")
+
+        try:
+            texte_brut = convertir(chemin_pdf)
+            sections = parser_article(texte_brut)
+            sortie = formater_sortie_sprint2(sections, nom_pdf)
+
+            with open(chemin_txt, "w", encoding="utf-8") as f:
+                f.write(sortie + "\n")
+
+            print("", file=sys.stderr)
+            ok += 1
+
+        except Exception as e:
+            print(f"x ERREUR : {e}", file=sys.stderr)
+            erreurs.append(nom_pdf)
 
 
 # POINT D'ENTRÉE
