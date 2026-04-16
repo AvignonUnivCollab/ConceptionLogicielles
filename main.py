@@ -437,6 +437,11 @@ def traiter_dossier(dossier_pdf: str, outil: str = "pdftotext") -> None:
             print(f"x ERREUR : {e}", file=sys.stderr)
             erreurs.append(nom_pdf)
 
+    print(f"\n{'─'*50}", file=sys.stderr)
+    print(f"Traités : {ok}/{len(pdfs)}  |  Erreurs : {len(erreurs)}", file=sys.stderr)
+    if erreurs:
+        print(f"Fichiers en erreur : {', '.join(erreurs)}", file=sys.stderr)
+    print(f"Sorties dans : {dossier_sortie}", file=sys.stderr)
 
 # POINT D'ENTRÉE
 
