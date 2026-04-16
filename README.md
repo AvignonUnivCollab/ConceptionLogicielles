@@ -30,8 +30,3 @@ L'objectif du Sprint 1 était d'évaluer deux extracteurs de texte, `pdftotext` 
    - `--comparer` : Lancer l'analyse comparative de qualité (Sprint 1) entre les deux outils sur le document.
    - `--stats` : Afficher les statistiques de l'extraction (quelles sections ont été trouvées ou manquent).
    - `-o fichier.txt` : Définir manuellement le nom du fichier de sortie.
-
-## Cérémonies Scrum
-
-Scrum master : Bouix Clément
-Les cérémonies Scrum on été faite à l'oral sans prise de notes des conversations.
