@@ -401,6 +401,19 @@ def traiter_dossier(dossier_pdf: str, outil: str = "pdftotext") -> None:
     os.makedirs(dossier_sortie)
     print(f"Dossier de sortie créé : {dossier_sortie}", file=sys.stderr)
 
+    # Lister les PDFs
+    pdfs = sorted([
+        f for f in os.listdir(dossier_pdf)
+        if f.lower().endswith(".pdf")
+    ])
+
+    if not pdfs:
+        print("Aucun fichier PDF trouvé dans le dossier.", file=sys.stderr)
+        return
+
+    convertir = convert_pdf2txt if outil == "pdf2txt" else convert_pdftotext
+    ok = 0
+    erreurs = []
 
 
 # POINT D'ENTRÉE
