@@ -312,7 +312,7 @@ def formater_sortie(sections: dict[str, str]) -> str:
             for l in contenu.split("\n"):
                 lignes.append(f"    {l}")
             lignes.append("")
-    
+
     return "\n".join(lignes)
 
 
@@ -379,6 +379,29 @@ def comparer_outils(pdf_path: str):
         meilleur = min(resultats, key=lambda x: resultats[x]["mots_colles"])
         print(f"Outil recommandé : {meilleur}")
     print()
+
+
+
+def traiter_dossier(dossier_pdf: str, outil: str = "pdftotext") -> None:
+    """
+    Parcourt dossier_pdf, parse chaque PDF et écrit les .txt dans
+    dossier_pdf/output/ (le sous-dossier est effacé s'il existe).
+    """
+    if not os.path.isdir(dossier_pdf):
+        print(f"Erreur : dossier introuvable → {dossier_pdf}", file=sys.stderr)
+        sys.exit(1)
+
+    # Sous-dossier de sortie
+    dossier_sortie = os.path.join(dossier_pdf, "output")
+
+    if os.path.exists(dossier_sortie):
+        print(f"Suppression de l'ancien dossier : {dossier_sortie}", file=sys.stderr)
+        shutil.rmtree(dossier_sortie)
+
+    os.makedirs(dossier_sortie)
+    print(f"Dossier de sortie créé : {dossier_sortie}", file=sys.stderr)
+
+
 
 # POINT D'ENTRÉE
 
