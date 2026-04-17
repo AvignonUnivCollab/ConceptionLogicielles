@@ -446,43 +446,13 @@ def traiter_dossier(dossier_pdf: str, outil: str = "pdftotext") -> None:
 # POINT D'ENTRÉE
 
 def main():
-    ap = argparse.ArgumentParser(
-        description="Parseur d'articles scientifiques PDF → texte structuré"
-    )
-    ap.add_argument("pdf", help="Chemin vers le fichier PDF")
-    ap.add_argument("--outil", choices=["pdftotext", "pdf2txt"], default="pdftotext")
-    ap.add_argument("--comparer", action="store_true")
-    ap.add_argument("--sortie", "-o", default=None)
-    ap.add_argument("--stats", action="store_true")
+    ap = argparse.ArgumentParser(description="Parseur d'articles scientifiques PDF → texte structuré (Sprint 2)")
+    ap.add_argument("dossier", help="Chemin vers le dossier contenant les fichiers PDF")
+    ap.add_argument("--outil", choices=["pdftotext", "pdf2txt"], default="pdftotext", help="Outil de conversion PDF→texte (défaut : pdftotext)")
     args = ap.parse_args()
 
-    if not os.path.isfile(args.pdf):
-        print(f"Erreur : fichier introuvable → {args.pdf}", file=sys.stderr)
-        sys.exit(1)
-
-    if args.comparer:
-        comparer_outils(args.pdf)
-        return
-
-    print(f"Conversion avec {args.outil}...", file=sys.stderr)
-    texte_brut = (convert_pdf2txt(args.pdf) if args.outil == "pdf2txt"
-                  else convert_pdftotext(args.pdf))
-
-    print("Parsing des sections...", file=sys.stderr)
-    sections = parser_article(texte_brut)
-    sortie = formater_sortie(sections)
-
-    if args.stats:
-        afficher_statistiques(sections)
-
-    fichier_sortie = args.sortie or (
-        os.path.splitext(os.path.basename(args.pdf))[0] + "_parse.txt"
-    )
-    with open(fichier_sortie, "w", encoding="utf-8") as f:
-        f.write(sortie)
-
-    print(f"Fichier créé : {fichier_sortie}", file=sys.stderr)
-
+    print(f"Outil de conversion : {args.outil}", file=sys.stderr)
+    traiter_dossier(args.dossier, args.outil)
 
 if __name__ == "__main__":
     main()
