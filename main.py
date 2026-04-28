@@ -12,6 +12,17 @@ import shutil
 import argparse
 import subprocess
 import tempfile
+import time
+
+# COULEURS ANSI 24-bit (hex → RGB)
+RESET   = "\033[0m"
+BOLD    = "\033[1m"
+C_BLEU  = "\033[38;2;88;166;255m"   # #58A6FF  titres / headers
+C_CYAN  = "\033[38;2;121;192;255m"  # #79C0FF  noms de fichiers
+C_VERT  = "\033[38;2;63;185;80m"    # #3FB950  succès
+C_ROUGE = "\033[38;2;248;81;73m"    # #F85149  erreurs
+C_JAUNE = "\033[38;2;210;153;34m"   # #D29922  avertissements
+C_GRIS  = "\033[38;2;139;148;158m"  # #8B949E  labels / stats
 
 
 # CONVERSION PDF → TEXTE
@@ -334,13 +345,13 @@ def formater_sortie_sprint2(sections: dict[str, str], nom_fichier: str) -> str:
 
 
 def afficher_statistiques(sections: dict[str, str]):
-    print("\n── Statistiques ──────────────────────────────")
+    print(f"\n{C_BLEU}{BOLD}── Statistiques ──────────────────────────────{RESET}")
     trouvees = [k for k, v in sections.items() if v.strip()]
     manquantes = [k for k, v in sections.items() if not v.strip()]
-    print(f"  Sections trouvées  ({len(trouvees)}) : {', '.join(trouvees)}")
+    print(f"  {C_GRIS}Sections trouvées  ({len(trouvees)}) :{RESET} {C_VERT}{', '.join(trouvees)}{RESET}")
     if manquantes:
-        print(f"  Sections absentes  ({len(manquantes)}) : {', '.join(manquantes)}")
-    print("──────────────────────────────────────────────\n")
+        print(f"  {C_GRIS}Sections absentes  ({len(manquantes)}) :{RESET} {C_JAUNE}{', '.join(manquantes)}{RESET}")
+    print(f"{C_BLEU}──────────────────────────────────────────────{RESET}\n")
 
 # COMPARAISON
 
@@ -348,16 +359,16 @@ def comparer_outils(pdf_path: str):
     """
     Compare par benchmark deux méthodes d'extraction de PDF.
     """
-    print(f"\n{'='*60}")
-    print(f" COMPARAISON pdftotext vs pdf2txt")
-    print(f" Fichier : {os.path.basename(pdf_path)}")
-    print(f"{'='*60}\n")
+    print(f"\n{C_BLEU}{BOLD}{'='*60}{RESET}")
+    print(f"{C_BLEU}{BOLD} COMPARAISON pdftotext vs pdf2txt{RESET}")
+    print(f"{C_GRIS} Fichier : {C_CYAN}{os.path.basename(pdf_path)}{RESET}")
+    print(f"{C_BLEU}{BOLD}{'='*60}{RESET}\n")
     resultats = {}
 
     # les outils à tester
     for nom, convertir in [("pdftotext -layout", convert_pdftotext),
                             ("pdf2txt.py", convert_pdf2txt)]:
-        print(f"── {nom} ──────────────────────────────")
+        print(f"{C_BLEU}{BOLD}── {nom} ──────────────────────────────{RESET}")
         try:
             texte = convertir(pdf_path) # Extrait texte brut
             sections = parser_article(texte) # Identification structurelle
@@ -365,19 +376,20 @@ def comparer_outils(pdf_path: str):
             nb_mots = len(texte.split())
             mots_colles = len(re.findall(r"[a-z]{15,}", texte)) # mots louches >15 char
 
-            print(f"  Mots extraits        : {nb_mots}")
-            print(f"  Sections détectées   : {len(trouvees)} → {', '.join(trouvees)}")
-            print(f"  Mots collés (≥15c)   : {mots_colles}  {'texte dégradé' if mots_colles > 50 else 'bon'}")
-            
+            qualite = f"{C_ROUGE}texte dégradé{RESET}" if mots_colles > 50 else f"{C_VERT}bon{RESET}"
+            print(f"  {C_GRIS}Mots extraits        :{RESET} {nb_mots}")
+            print(f"  {C_GRIS}Sections détectées   :{RESET} {len(trouvees)} → {C_VERT}{', '.join(trouvees)}{RESET}")
+            print(f"  {C_GRIS}Mots collés (≥15c)   :{RESET} {mots_colles}  {qualite}")
+
             resultats[nom] = {"sections": len(trouvees), "mots_colles": mots_colles}
         except Exception as e:
-            print(f"  ERREUR : {e}")
+            print(f"  {C_ROUGE}ERREUR : {e}{RESET}")
         print()
-    print("── Verdict ──────────────────────────────────")
+    print(f"{C_BLEU}{BOLD}── Verdict ──────────────────────────────────{RESET}")
     if resultats: # comparaison finale
         # le meilleur est celui qui a le mieux découpé les mots
         meilleur = min(resultats, key=lambda x: resultats[x]["mots_colles"])
-        print(f"Outil recommandé : {meilleur}")
+        print(f"{C_VERT}{BOLD}Outil recommandé : {meilleur}{RESET}")
     print()
 
 
@@ -395,11 +407,11 @@ def traiter_dossier(dossier_pdf: str, outil: str = "pdftotext") -> None:
     dossier_sortie = os.path.join(dossier_pdf, "output")
 
     if os.path.exists(dossier_sortie):
-        print(f"Suppression de l'ancien dossier : {dossier_sortie}", file=sys.stderr)
+        print(f"{C_JAUNE}Suppression de l'ancien dossier : {dossier_sortie}{RESET}", file=sys.stderr)
         shutil.rmtree(dossier_sortie)
 
     os.makedirs(dossier_sortie)
-    print(f"Dossier de sortie créé : {dossier_sortie}", file=sys.stderr)
+    print(f"{C_VERT}Dossier de sortie créé : {dossier_sortie}{RESET}", file=sys.stderr)
 
     # Lister les PDFs
     pdfs = sorted([
@@ -420,7 +432,7 @@ def traiter_dossier(dossier_pdf: str, outil: str = "pdftotext") -> None:
         nom_base = os.path.splitext(nom_pdf)[0]
         chemin_txt = os.path.join(dossier_sortie, nom_base + ".txt")
 
-        print(f"  : {nom_pdf}", file=sys.stderr, end=" ")
+        print(f"  {C_CYAN}{nom_pdf}{RESET}", file=sys.stderr, end=" ")
 
         try:
             texte_brut = convertir(chemin_pdf)
@@ -430,18 +442,86 @@ def traiter_dossier(dossier_pdf: str, outil: str = "pdftotext") -> None:
             with open(chemin_txt, "w", encoding="utf-8") as f:
                 f.write(sortie + "\n")
 
-            print("", file=sys.stderr)
+            print(f"{C_VERT}✓{RESET}", file=sys.stderr)
             ok += 1
 
         except Exception as e:
-            print(f"x ERREUR : {e}", file=sys.stderr)
+            print(f"{C_ROUGE}✗ ERREUR : {e}{RESET}", file=sys.stderr)
             erreurs.append(nom_pdf)
 
-    print(f"\n{'─'*50}", file=sys.stderr)
-    print(f"Traités : {ok}/{len(pdfs)}  |  Erreurs : {len(erreurs)}", file=sys.stderr)
+    print(f"\n{C_BLEU}{'─'*50}{RESET}", file=sys.stderr)
+    print(f"{BOLD}Traités : {C_VERT}{ok}{RESET}{BOLD}/{len(pdfs)}{RESET}  |  Erreurs : {C_ROUGE if erreurs else C_VERT}{len(erreurs)}{RESET}", file=sys.stderr)
     if erreurs:
-        print(f"Fichiers en erreur : {', '.join(erreurs)}", file=sys.stderr)
-    print(f"Sorties dans : {dossier_sortie}", file=sys.stderr)
+        print(f"{C_ROUGE}Fichiers en erreur : {', '.join(erreurs)}{RESET}", file=sys.stderr)
+    print(f"{C_GRIS}Sorties dans : {dossier_sortie}{RESET}", file=sys.stderr)
+
+# ANIMATION DÉMARRAGE
+
+def afficher_banner():
+    """Affiche un banner animé au démarrage."""
+    os.system("cls" if os.name == "nt" else "clear")
+    HIDE_CURSOR = "\033[?25l"
+    SHOW_CURSOR = "\033[?25h"
+
+    # Dégradé bleu→cyan sur chaque ligne du logo
+    GRAD = [
+        "\033[38;2;88;166;255m",   # #58A6FF
+        "\033[38;2;99;179;255m",
+        "\033[38;2;110;192;255m",
+        "\033[38;2;121;192;255m",  # #79C0FF
+        "\033[38;2;132;205;255m",
+        "\033[38;2;143;218;255m",
+    ]
+
+    LOGO = [
+        r" ____   ___   _____   ____    _   _  _   _ ",
+        r"|  _ \ |  _ \|  ___| |  _ \  | | | || \ | |",
+        r"| |_) || | | | |_    | |_) | | | | ||  \| |",
+        r"|  __/ | |_| |  _|   |  _ <  | |_| || |\  |",
+        r"|_|    |____/|_|     |_| \_\  \___/ |_| \_|",
+    ]
+    SOUS_TITRE = "  Parseur d'articles scientifiques  ·  Sprint 2  ·  LIA Avignon"
+    SEPARATEUR = "  " + "─" * 50
+
+    print(HIDE_CURSOR, end="", file=sys.stderr)
+    print(file=sys.stderr)
+
+    # Animation : révèle le logo caractère par caractère ligne par ligne
+    for i, ligne in enumerate(LOGO):
+        couleur = GRAD[i % len(GRAD)]
+        print(f"  {couleur}{BOLD}", end="", file=sys.stderr)
+        for char in ligne:
+            print(char, end="", flush=True, file=sys.stderr)
+            time.sleep(0.004)
+        print(RESET, file=sys.stderr)
+
+    # Sous-titre qui apparaît lettre par lettre
+    time.sleep(0.05)
+    print(f"\n{C_CYAN}", end="", file=sys.stderr)
+    for char in SOUS_TITRE:
+        print(char, end="", flush=True, file=sys.stderr)
+        time.sleep(0.018)
+    print(RESET, file=sys.stderr)
+
+    # Barre de chargement animée
+    time.sleep(0.1)
+    LARGEUR = 40
+    print(f"\n  {C_GRIS}Initialisation ", end="", file=sys.stderr)
+    print(f"{C_BLEU}[", end="", flush=True, file=sys.stderr)
+    for i in range(LARGEUR):
+        time.sleep(0.018)
+        # dégradé vert sur la barre
+        r = int(63  + (88  - 63)  * i / LARGEUR)
+        g = int(185 + (166 - 185) * i / LARGEUR)
+        b = int(80  + (255 - 80)  * i / LARGEUR)
+        print(f"\033[38;2;{r};{g};{b}m█", end="", flush=True, file=sys.stderr)
+    print(f"{C_BLEU}]{RESET} {C_VERT}{BOLD}prêt !{RESET}", file=sys.stderr)
+
+    # Séparateur final
+    time.sleep(0.05)
+    print(f"\n{C_BLEU}{BOLD}{SEPARATEUR}{RESET}\n", file=sys.stderr)
+    print(SHOW_CURSOR, end="", file=sys.stderr)
+
 
 # POINT D'ENTRÉE
 
@@ -451,7 +531,9 @@ def main():
     ap.add_argument("--outil", choices=["pdftotext", "pdf2txt"], default="pdftotext", help="Outil de conversion PDF→texte (défaut : pdftotext)")
     args = ap.parse_args()
 
-    print(f"Outil de conversion : {args.outil}", file=sys.stderr)
+    afficher_banner()
+    print(f"  {C_BLEU}{BOLD}Outil de conversion : {RESET}{C_CYAN}{args.outil}{RESET}", file=sys.stderr)
+    print(file=sys.stderr)
     traiter_dossier(args.dossier, args.outil)
 
 if __name__ == "__main__":
