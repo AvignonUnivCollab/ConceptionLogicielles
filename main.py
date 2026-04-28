@@ -309,22 +309,22 @@ LABELS = {
     "bibliographie": "Bibliographie",
 }
 
+# LEGACY
+# def formater_sortie(sections: dict[str, str]) -> str:
+#     """
+#     Transforme le dictionnaire des sections en un texte propre et indenté.
+#     """
+#     lignes = []
+#     for cle, label in LABELS.items():
+#         contenu = sections.get(cle, "").strip()
+#         if contenu:
+#             lignes.append(f"{label} :")
+#             # Indentation du contenu pour que ça soit bien lisible
+#             for l in contenu.split("\n"):
+#                 lignes.append(f"    {l}")
+#             lignes.append("")
 
-def formater_sortie(sections: dict[str, str]) -> str:
-    """
-    Transforme le dictionnaire des sections en un texte propre et indenté.
-    """
-    lignes = []
-    for cle, label in LABELS.items():
-        contenu = sections.get(cle, "").strip()
-        if contenu:
-            lignes.append(f"{label} :")
-            # Indentation du contenu pour que ça soit bien lisible
-            for l in contenu.split("\n"):
-                lignes.append(f"    {l}")
-            lignes.append("")
-
-    return "\n".join(lignes)
+#     return "\n".join(lignes)
 
 
 def une_ligne(texte: str) -> str:
