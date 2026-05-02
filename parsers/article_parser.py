@@ -170,8 +170,9 @@ def _extraire_auteurs(lignes: list[str], debut: int) -> str:
 
 
 # Regex pour l'extraction des emails
-_EMAIL_RE       = re.compile(r'[\w\.\+\-]+@[\w\.\-]+\.[a-zA-Z]{2,}')
-_MULTI_EMAIL_RE = re.compile(r'\{([^}]+)\}@([\w\.\-]+)')
+_EMAIL_RE              = re.compile(r'[\w\.\+\-]+@[\w\.\-]+\.[a-zA-Z]{2,}')
+_MULTI_EMAIL_BRACES_RE = re.compile(r'\{([^}]+)\}@([\w\.\-]+\.[a-zA-Z]{2,})')
+_MULTI_EMAIL_PARENS_RE = re.compile(r'\(([^)]+)\)@([\w\.\-]+\.[a-zA-Z]{2,})')
 
 
 def _extraire_emails(lignes: list[str], debut: int) -> list[str]:
@@ -179,37 +180,59 @@ def _extraire_emails(lignes: list[str], debut: int) -> list[str]:
     Passe 1.6 : extrait toutes les adresses email trouvées dans la zone
     d'en-tête (entre le titre et l'abstract).
 
-    Gère les formats courants :
-      - email simple     : alice@labo.fr
-      - emails groupés   : {alice, bob}@labo.fr
-      - emails en ligne  : Alice Martin <alice@labo.fr>
+    Gère les formats rencontrés dans les articles :
+      - simple             : remy.kessler@univ-ubs.fr
+      - virgule finale     : juan-manuel.torres@univ-avignon.fr,
+      - coupé sur 2 lignes : torres@univ-\navignon.fr
+      - accolades groupées : {alice, bob}@lif.univ-mrs.fr
+      - parenthèses multi  : (alexis.nasr,frederic.bechet)@lif.univ-mrs.fr
+      - note de bas IEEE   : (juan-manuel.torres@univ-avignon.fr).
+
+    Note : on ne s'arrête PAS aux titres de sections car dans les articles
+    IEEE les emails apparaissent en notes de bas de 1ère page, après
+    l'introduction, dans la sortie pdftotext -layout.
+    On s'arrête uniquement à la bibliographie ou après 120 lignes.
     """
     emails: list[str] = []
     seen: set[str] = set()
 
     def _ajouter(addr: str) -> None:
-        addr = addr.strip().lower()
-        if addr and addr not in seen:
+        addr = addr.strip().lower().rstrip(",;).")
+        if addr and "@" in addr and addr not in seen:
             seen.add(addr)
             emails.append(addr)
 
-    for i in range(debut, min(debut + 35, len(lignes))):
-        l = lignes[i]
-        stripped = l.strip()
-        if not stripped:
-            continue
-        if detecter_section(stripped):
+    # Collecter les lignes sans s'arrêter aux sections (sauf bibliographie)
+    zone: list[str] = []
+    for i in range(debut, min(debut + 120, len(lignes))):
+        stripped = lignes[i].strip()
+        if detecter_section(stripped) == "bibliographie":
             break
-        if re.match(r"^abstract[\s\.\—\–\:]?", stripped, re.IGNORECASE):
-            break
+        zone.append(lignes[i])
 
-        # Format groupé : {alice, bob}@domain.com
-        for m in _MULTI_EMAIL_RE.finditer(l):
+    # Recoller les emails coupés en fin de ligne par un tiret+saut de ligne
+    # ex : "torres@univ-\navignon.fr" → "torres@univ-avignon.fr"
+    texte_zone = "\n".join(zone)
+    texte_zone = re.sub(
+        r'([\w\.\+\-]+@[\w\.\-]+-)\n\s*([\w][\w\.\-]*)',
+        r'\1\2',
+        texte_zone,
+    )
+
+    for l in texte_zone.split("\n"):
+        # Format parenthèses multi : (alice,bob)@domain.com
+        for m in _MULTI_EMAIL_PARENS_RE.finditer(l):
             domain = m.group(2)
             for localpart in m.group(1).split(","):
                 _ajouter(f"{localpart.strip()}@{domain}")
 
-        # Emails standards (évite de re-capturer ceux déjà traités via {})
+        # Format accolades : {alice, bob}@domain.com
+        for m in _MULTI_EMAIL_BRACES_RE.finditer(l):
+            domain = m.group(2)
+            for localpart in m.group(1).split(","):
+                _ajouter(f"{localpart.strip()}@{domain}")
+
+        # Emails standards (inclut les tirets complexes dans local-part et domaine)
         for addr in _EMAIL_RE.findall(l):
             _ajouter(addr)
 
@@ -281,7 +304,7 @@ def parser_article(texte: str) -> dict[str, str]:
 
     sections_corps = _extraire_sections(lignes[idx_fin_titre:])
     for cle, contenu in sections_corps.items():
-        if cle not in ("titre", "auteurs"):
+        if cle not in ("titre", "auteurs", "emails"):
             sections[cle] = contenu
 
     #normaliser les sauts de ligne

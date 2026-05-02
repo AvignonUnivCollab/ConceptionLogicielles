@@ -50,8 +50,8 @@ def detecter_section(ligne: str) -> str | None:
     norm  = reconstruire_mots_ieee(stripped)
     gauche = re.split(r"\s{4,}", norm)[0].strip()  # colonne gauche (double colonne)
 
-    # Cas 1 : titre seul sans numéro
-    if re.match(r"^[a-zA-ZÀ-ÿ][a-zA-ZÀ-ÿ\s\-]{1,60}$", gauche):
+    # Cas 1 : titre seul sans numéro (majuscule obligatoire en début)
+    if re.match(r"^[A-ZÀ-Ÿ][a-zA-ZÀ-ÿ\s\-]{1,60}$", gauche):
         return classer_titre(gauche)
 
     # Cas 2 : numéro arabe + titre

@@ -1,5 +1,5 @@
 Fichier : kessler94715.pdf
 Titre : Extraction of terminology in the field of
 Auteurs : 
-Emails : 
+Emails : remy.kessler@univ-ubs.fr ; nicolas.bechet@irisa.fr ; giuseppe.berio@univ-ubs.fr
 Resume : We describe a corpus analysis method to extract dialogue and correctly understanding the meaning of the word. terminology from a collection of technical specifications in the The knowledge model is mainly an ontology of the domain (in field of construction. Using statistics and word n-grams analysis, this case, the construction domain) providing the standardized we extract the terminology of the domain and then perform pruning steps with linguistic patterns and internet queries to concepts and their relationships. As well-known, building such improve the quality of the final terminology. Results are evaluated knowledge models needs time and is costly; one of the earlier by using a manual evaluation carried out by 6 experts in the field. questions raised by our industrial partners has been about “how to build, as automaticaly as possible, such a knowledge Index Terms—terminology extraction, Internet queries, linguis- model”. This question is closely related to the interest of tic patterns. quickly adapting the application to other domains (than the
