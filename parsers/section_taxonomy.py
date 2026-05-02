@@ -53,6 +53,7 @@ SOUS_SECTIONS_CORPS: list[str] = [
 SECTIONS_ORDRE: list[str] = [
     "titre",
     "auteurs",
+    "emails",
     "abstract",
     "introduction",
     "corps",

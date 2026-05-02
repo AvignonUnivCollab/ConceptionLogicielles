@@ -169,6 +169,53 @@ def _extraire_auteurs(lignes: list[str], debut: int) -> str:
     return " ; ".join(auteur_lignes) if auteur_lignes else ""
 
 
+# Regex pour l'extraction des emails
+_EMAIL_RE       = re.compile(r'[\w\.\+\-]+@[\w\.\-]+\.[a-zA-Z]{2,}')
+_MULTI_EMAIL_RE = re.compile(r'\{([^}]+)\}@([\w\.\-]+)')
+
+
+def _extraire_emails(lignes: list[str], debut: int) -> list[str]:
+    """
+    Passe 1.6 : extrait toutes les adresses email trouvées dans la zone
+    d'en-tête (entre le titre et l'abstract).
+
+    Gère les formats courants :
+      - email simple     : alice@labo.fr
+      - emails groupés   : {alice, bob}@labo.fr
+      - emails en ligne  : Alice Martin <alice@labo.fr>
+    """
+    emails: list[str] = []
+    seen: set[str] = set()
+
+    def _ajouter(addr: str) -> None:
+        addr = addr.strip().lower()
+        if addr and addr not in seen:
+            seen.add(addr)
+            emails.append(addr)
+
+    for i in range(debut, min(debut + 35, len(lignes))):
+        l = lignes[i]
+        stripped = l.strip()
+        if not stripped:
+            continue
+        if detecter_section(stripped):
+            break
+        if re.match(r"^abstract[\s\.\—\–\:]?", stripped, re.IGNORECASE):
+            break
+
+        # Format groupé : {alice, bob}@domain.com
+        for m in _MULTI_EMAIL_RE.finditer(l):
+            domain = m.group(2)
+            for localpart in m.group(1).split(","):
+                _ajouter(f"{localpart.strip()}@{domain}")
+
+        # Emails standards (évite de re-capturer ceux déjà traités via {})
+        for addr in _EMAIL_RE.findall(l):
+            _ajouter(addr)
+
+    return emails
+
+
 def _extraire_sections(lignes: list[str]) -> dict[str, str]:
     """
     Passe 2 : parcourt les lignes et accumule le contenu par section.
@@ -230,6 +277,7 @@ def parser_article(texte: str) -> dict[str, str]:
     titre, idx_fin_titre = _extraire_titre(lignes)
     sections["titre"]   = titre
     sections["auteurs"] = _extraire_auteurs(lignes, idx_fin_titre)
+    sections["emails"]  = " ; ".join(_extraire_emails(lignes, idx_fin_titre))
 
     sections_corps = _extraire_sections(lignes[idx_fin_titre:])
     for cle, contenu in sections_corps.items():
