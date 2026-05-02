@@ -53,6 +53,7 @@ class Sprint2Formatter(ArticleFormatter):
             f"Fichier : {nom_fichier}",
             f"Titre : {_une_ligne(sections.get('titre',   ''))}",
             f"Auteurs : {_une_ligne(sections.get('auteurs', ''))}",
+            f"Emails : {_une_ligne(sections.get('emails',  ''))}",
             f"Resume : {_une_ligne(sections.get('abstract', ''))}",
         ])
 
