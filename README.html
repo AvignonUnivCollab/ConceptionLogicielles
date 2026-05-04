@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PDF Parser — LIA Avignon Université</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Syne:wght@400;700;800&display=swap');
+
+  :root {
+    --bg: #0d1117;
+    --bg2: #161b22;
+    --bg3: #21262d;
+    --border: #30363d;
+    --blue: #58a6ff;
+    --cyan: #79c0ff;
+    --green: #3fb950;
+    --yellow: #d29922;
+    --red: #f85149;
+    --purple: #bc8cff;
+    --text: #e6edf3;
+    --text2: #8b949e;
+    --text3: #6e7681;
+    --accent: #1f6feb;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+    overflow-x: hidden;
+  }
+
+  /* HERO */
+  .hero {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 4rem 2rem;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .hero::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(31,111,235,0.15) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .grid-bg {
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(48,54,61,0.4) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(48,54,61,0.4) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    opacity: 0.5;
+  }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(31,111,235,0.15);
+    border: 1px solid rgba(88,166,255,0.3);
+    color: var(--blue);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    padding: 6px 16px;
+    border-radius: 100px;
+    margin-bottom: 2rem;
+    animation: fadeDown 0.6s ease both;
+  }
+
+  .dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--green);
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.8); }
+  }
+
+  h1 {
+    font-size: clamp(2.5rem, 6vw, 5rem);
+    font-weight: 800;
+    line-height: 1.1;
+    margin-bottom: 1.5rem;
+    animation: fadeDown 0.6s ease 0.1s both;
+  }
+
+  h1 span { color: var(--blue); }
+
+  .subtitle {
+    font-size: 1.1rem;
+    color: var(--text2);
+    max-width: 520px;
+    margin: 0 auto 3rem;
+    animation: fadeDown 0.6s ease 0.2s both;
+  }
+
+  .hero-stats {
+    display: flex;
+    gap: 2rem;
+    flex-wrap: wrap;
+    justify-content: center;
+    animation: fadeDown 0.6s ease 0.3s both;
+  }
+
+  .stat {
+    text-align: center;
+  }
+
+  .stat-num {
+    font-size: 2rem;
+    font-weight: 800;
+    color: var(--blue);
+    display: block;
+  }
+
+  .stat-label {
+    font-size: 0.8rem;
+    color: var(--text3);
+    font-family: 'JetBrains Mono', monospace;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+
+  @keyframes fadeDown {
+    from { opacity: 0; transform: translateY(-16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* SECTIONS */
+  section {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 4rem 2rem;
+  }
+
+  .section-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: var(--blue);
+    margin-bottom: 0.75rem;
+  }
+
+  h2 {
+    font-size: 2rem;
+    font-weight: 800;
+    margin-bottom: 2rem;
+    color: var(--text);
+  }
+
+  h3 {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 0.5rem;
+  }
+
+  p { color: var(--text2); margin-bottom: 1rem; }
+
+  /* DIVIDER */
+  .divider {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 0;
+  }
+
+  /* SPRINT TIMELINE */
+  .timeline {
+    position: relative;
+    padding-left: 2rem;
+  }
+
+  .timeline::before {
+    content: '';
+    position: absolute;
+    left: 7px;
+    top: 8px;
+    bottom: 8px;
+    width: 2px;
+    background: linear-gradient(to bottom, var(--blue), var(--purple), var(--green));
+    border-radius: 2px;
+  }
+
+  .sprint {
+    position: relative;
+    margin-bottom: 3rem;
+    opacity: 0;
+    transform: translateX(-20px);
+    transition: opacity 0.5s ease, transform 0.5s ease;
+  }
+
+  .sprint.visible {
+    opacity: 1;
+    transform: translateX(0);
+  }
+
+  .sprint::before {
+    content: '';
+    position: absolute;
+    left: -1.85rem;
+    top: 6px;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: 2px solid var(--bg);
+    z-index: 1;
+  }
+
+  .sprint-1::before { background: var(--blue); }
+  .sprint-2::before { background: var(--purple); }
+  .sprint-3::before { background: var(--green); }
+
+  .sprint-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 1rem;
+  }
+
+  .sprint-tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    padding: 3px 10px;
+    border-radius: 4px;
+    font-weight: 700;
+  }
+
+  .tag-blue { background: rgba(88,166,255,0.15); color: var(--blue); border: 1px solid rgba(88,166,255,0.3); }
+  .tag-purple { background: rgba(188,140,255,0.15); color: var(--purple); border: 1px solid rgba(188,140,255,0.3); }
+  .tag-green { background: rgba(63,185,80,0.15); color: var(--green); border: 1px solid rgba(63,185,80,0.3); }
+
+  .sprint-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.5rem;
+  }
+
+  .features {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 0.75rem;
+    margin-top: 1rem;
+  }
+
+  .feature {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    font-size: 14px;
+    color: var(--text2);
+  }
+
+  .feature-icon {
+    width: 18px;
+    height: 18px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+
+  .icon-blue { background: rgba(88,166,255,0.15); color: var(--blue); }
+  .icon-green { background: rgba(63,185,80,0.15); color: var(--green); }
+  .icon-purple { background: rgba(188,140,255,0.15); color: var(--purple); }
+  .icon-yellow { background: rgba(210,153,34,0.15); color: var(--yellow); }
+
+  /* ARCHITECTURE */
+  .arch-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+  }
+
+  .arch-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.25rem;
+    transition: border-color 0.2s;
+  }
+
+  .arch-card:hover { border-color: var(--blue); }
+
+  .arch-icon {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--text3);
+    margin-bottom: 0.5rem;
+  }
+
+  .arch-files {
+    margin-top: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .arch-file {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text3);
+    padding: 3px 8px;
+    background: var(--bg3);
+    border-radius: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .arch-file .filename { color: var(--cyan); }
+
+  /* CODE BLOCK */
+  .code-block {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    margin: 1.5rem 0;
+  }
+
+  .code-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg2);
+  }
+
+  .code-dots { display: flex; gap: 6px; }
+  .code-dot { width: 10px; height: 10px; border-radius: 50%; }
+  .dot-red { background: #ff5f57; }
+  .dot-yellow { background: #febc2e; }
+  .dot-green { background: #28c840; }
+
+  .code-lang {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text3);
+  }
+
+  .code-body {
+    padding: 1.25rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    line-height: 1.8;
+    overflow-x: auto;
+  }
+
+  .cmd { color: var(--green); }
+  .arg { color: var(--blue); }
+  .flag { color: var(--yellow); }
+  .comment { color: var(--text3); }
+  .out { color: var(--text2); }
+
+  /* SOLID TABLE */
+  .solid-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1.5rem 0;
+  }
+
+  .solid-table th {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text3);
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--border);
+    text-align: left;
+  }
+
+  .solid-table td {
+    padding: 0.875rem 1rem;
+    border-bottom: 1px solid rgba(48,54,61,0.5);
+    font-size: 14px;
+    color: var(--text2);
+    vertical-align: top;
+  }
+
+  .solid-table td:first-child {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--purple);
+    white-space: nowrap;
+    font-weight: 700;
+  }
+
+  .solid-table tr:last-child td { border-bottom: none; }
+
+  /* XML EXAMPLE */
+  .xml-block {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.25rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    line-height: 2;
+    overflow-x: auto;
+  }
+
+  .xml-tag { color: var(--blue); }
+  .xml-attr { color: var(--yellow); }
+  .xml-val { color: var(--green); }
+  .xml-text { color: var(--text2); }
+
+  /* FOOTER */
+  footer {
+    text-align: center;
+    padding: 4rem 2rem;
+    color: var(--text3);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    border-top: 1px solid var(--border);
+  }
+
+  footer span { color: var(--blue); }
+
+  /* SCROLL ANIMATION */
+  .reveal {
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity 0.6s ease, transform 0.6s ease;
+  }
+  .reveal.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  /* TABS */
+  .tabs { display: flex; gap: 0; margin-bottom: 0; border-bottom: 1px solid var(--border); }
+  .tab {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    padding: 0.6rem 1.2rem;
+    cursor: pointer;
+    color: var(--text3);
+    border-bottom: 2px solid transparent;
+    transition: color 0.2s, border-color 0.2s;
+    background: none;
+    border-top: none;
+    border-left: none;
+    border-right: none;
+  }
+  .tab.active { color: var(--blue); border-bottom-color: var(--blue); }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+  .tabbed { background: var(--bg3); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; margin: 1.5rem 0; }
+  .tab-header { background: var(--bg2); padding: 0 1rem; border-bottom: 1px solid var(--border); }
+  .tab-body { padding: 1.25rem; }
+</style>
+</head>
+<body>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="grid-bg"></div>
+  <div class="badge"><div class="dot"></div> LIA · Avignon Université · 2026</div>
+  <h1>PDF <span>Parser</span><br>Scientifique</h1>
+  <p class="subtitle">Extraction structurée d'articles scientifiques PDF vers TXT et XML — Projet Scrum en 3 sprints</p>
+  <div class="hero-stats">
+    <div class="stat"><span class="stat-num">3</span><span class="stat-label">Sprints</span></div>
+    <div class="stat"><span class="stat-num">10</span><span class="stat-label">Modules</span></div>
+    <div class="stat"><span class="stat-num">2</span><span class="stat-label">Formats</span></div>
+    <div class="stat"><span class="stat-num">SOLID</span><span class="stat-label">Architecture</span></div>
+  </div>
+</div>
+
+<hr class="divider">
+
+<!-- SPRINTS -->
+<section>
+  <div class="section-label">Historique du projet</div>
+  <h2>3 Sprints, 1 système</h2>
+
+  <div class="timeline">
+
+    <div class="sprint sprint-1 reveal">
+      <div class="sprint-header">
+        <span class="sprint-tag tag-blue">Sprint 1</span>
+        <h3>Parseur monolithique</h3>
+      </div>
+      <div class="sprint-card">
+        <p>Première version fonctionnelle : un seul fichier Python extrayant les sections d'un article scientifique depuis un PDF texte.</p>
+        <div class="features">
+          <div class="feature"><div class="feature-icon icon-blue">✓</div>Conversion PDF → texte brut</div>
+          <div class="feature"><div class="feature-icon icon-blue">✓</div>Détection des sections</div>
+          <div class="feature"><div class="feature-icon icon-blue">✓</div>Extraction titre / abstract</div>
+          <div class="feature"><div class="feature-icon icon-blue">✓</div>Benchmark pdftotext vs pdf2txt</div>
+          <div class="feature"><div class="feature-icon icon-blue">✓</div>Sortie texte colorée (ANSI)</div>
+          <div class="feature"><div class="feature-icon icon-blue">✓</div>Traitement par lot de dossier</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sprint sprint-2 reveal">
+      <div class="sprint-header">
+        <span class="sprint-tag tag-purple">Sprint 2</span>
+        <h3>Refactoring SOLID + amélioration extraction</h3>
+      </div>
+      <div class="sprint-card">
+        <p>Découpage du monolithe en modules cohérents selon les principes SOLID. Amélioration significative de la détection des auteurs.</p>
+        <div class="features">
+          <div class="feature"><div class="feature-icon icon-purple">✓</div>Architecture multi-modules</div>
+          <div class="feature"><div class="feature-icon icon-purple">✓</div>Interface PdfConverter (OCP)</div>
+          <div class="feature"><div class="feature-icon icon-purple">✓</div>Interface ArticleFormatter (OCP)</div>
+          <div class="feature"><div class="feature-icon icon-purple">✓</div>Détection auteurs multi-formats</div>
+          <div class="feature"><div class="feature-icon icon-purple">✓</div>Support IEEE / Springer / ACM</div>
+          <div class="feature"><div class="feature-icon icon-purple">✓</div>Format Sprint 2 : TXT structuré</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sprint sprint-3 reveal">
+      <div class="sprint-header">
+        <span class="sprint-tag tag-green">Sprint 3</span>
+        <h3>Sortie XML + emails + bibliographie</h3>
+      </div>
+      <div class="sprint-card">
+        <p>Nouvelle sortie XML utf-8 structurée, extraction des emails, de la bibliographie et choix du format via argument CLI.</p>
+        <div class="features">
+          <div class="feature"><div class="feature-icon icon-green">✓</div>Sortie XML utf-8 conforme</div>
+          <div class="feature"><div class="feature-icon icon-green">✓</div>Extraction emails auteurs</div>
+          <div class="feature"><div class="feature-icon icon-green">✓</div>Extraction bibliographie</div>
+          <div class="feature"><div class="feature-icon icon-green">✓</div>Argument -t (TXT) / -x (XML)</div>
+          <div class="feature"><div class="feature-icon icon-green">✓</div>Dossiers output/txt et output/xml</div>
+          <div class="feature"><div class="feature-icon icon-green">✓</div>Nettoyage caractères XML invalides</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- ARCHITECTURE -->
+<section>
+  <div class="section-label">Structure du code</div>
+  <h2>Architecture modulaire</h2>
+  <p>Chaque module a une responsabilité unique. Les interfaces abstraites permettent d'étendre sans modifier.</p>
+
+  <div class="arch-grid reveal">
+    <div class="arch-card">
+      <div class="arch-icon">/ racine</div>
+      <h3>Entrée CLI</h3>
+      <div class="arch-files">
+        <div class="arch-file"><span class="filename">main.py</span></div>
+        <div class="arch-file"><span class="filename">batch_processor.py</span></div>
+      </div>
+    </div>
+    <div class="arch-card">
+      <div class="arch-icon">converters/</div>
+      <h3>Conversion PDF</h3>
+      <div class="arch-files">
+        <div class="arch-file"><span class="filename">pdf_converter.py</span></div>
+        <div class="arch-file"><span class="filename">benchmark.py</span></div>
+      </div>
+    </div>
+    <div class="arch-card">
+      <div class="arch-icon">parsers/</div>
+      <h3>Parsing structurel</h3>
+      <div class="arch-files">
+        <div class="arch-file"><span class="filename">article_parser.py</span></div>
+        <div class="arch-file"><span class="filename">section_detector.py</span></div>
+        <div class="arch-file"><span class="filename">section_taxonomy.py</span></div>
+        <div class="arch-file"><span class="filename">text_cleaner.py</span></div>
+        <div class="arch-file"><span class="filename">email_extractor.py</span></div>
+      </div>
+    </div>
+    <div class="arch-card">
+      <div class="arch-icon">formatters/</div>
+      <h3>Formatage sortie</h3>
+      <div class="arch-files">
+        <div class="arch-file"><span class="filename">article_formatter.py</span></div>
+        <div class="arch-file"><span class="filename">xml_formatter.py</span></div>
+      </div>
+    </div>
+    <div class="arch-card">
+      <div class="arch-icon">utils/</div>
+      <h3>Utilitaires</h3>
+      <div class="arch-files">
+        <div class="arch-file"><span class="filename">colors.py</span></div>
+        <div class="arch-file"><span class="filename">banner.py</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- SOLID -->
+<section>
+  <div class="section-label">Qualité logicielle</div>
+  <h2>Principes SOLID</h2>
+
+  <table class="solid-table reveal">
+    <thead>
+      <tr>
+        <th>Principe</th>
+        <th>Application concrète</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>S — SRP</td>
+        <td>Chaque fichier a une seule raison de changer. Le nettoyage, la détection, le parsing et le formatage sont des responsabilités séparées.</td>
+      </tr>
+      <tr>
+        <td>O — OCP</td>
+        <td>XmlFormatter étend ArticleFormatter sans modifier Sprint2Formatter. Un nouveau format = une nouvelle classe, aucun code existant modifié.</td>
+      </tr>
+      <tr>
+        <td>L — LSP</td>
+        <td>PdfToTextConverter et Pdf2TxtConverter sont interchangeables partout où PdfConverter est attendu.</td>
+      </tr>
+      <tr>
+        <td>I — ISP</td>
+        <td>Les interfaces sont petites et ciblées : PdfConverter n'expose qu'une méthode convert(), ArticleFormatter qu'une méthode format().</td>
+      </tr>
+      <tr>
+        <td>D — DIP</td>
+        <td>batch_processor dépend de PdfConverter (abstraction) via la ConverterFactory, pas d'une implémentation concrète.</td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+<hr class="divider">
+
+<!-- INSTALLATION -->
+<section>
+  <div class="section-label">Mise en route</div>
+  <h2>Installation</h2>
+
+  <div class="code-block reveal">
+    <div class="code-header">
+      <div class="code-dots"><div class="code-dot dot-red"></div><div class="code-dot dot-yellow"></div><div class="code-dot dot-green"></div></div>
+      <span class="code-lang">bash</span>
+    </div>
+    <div class="code-body">
+<span class="comment"># 1. Cloner le dépôt</span>
+<span class="cmd">git clone</span> <span class="arg">https://github.com/votre-repo/pdf_parser.git</span>
+<span class="cmd">cd</span> <span class="arg">pdf_parser</span>
+
+<span class="comment"># 2. Environnement virtuel (recommandé)</span>
+<span class="cmd">python -m venv</span> <span class="arg">.venv</span>
+<span class="cmd">source</span> <span class="arg">.venv/bin/activate</span>  <span class="comment"># Linux/macOS</span>
+<span class="arg">.venv\Scripts\activate</span>           <span class="comment"># Windows</span>
+
+<span class="comment"># 3. Dépendance système (outil de conversion PDF)</span>
+<span class="cmd">sudo apt install</span> <span class="arg">poppler-utils</span>   <span class="comment"># installe pdftotext</span>
+<span class="comment"># ou : pip install pdfminer.six      # installe pdf2txt.py</span>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- UTILISATION -->
+<section>
+  <div class="section-label">Utilisation</div>
+  <h2>Lancer le parseur</h2>
+
+  <div class="tabbed reveal">
+    <div class="tab-header tabs">
+      <button class="tab active" onclick="switchTab(event, 'txt')">Sortie TXT</button>
+      <button class="tab" onclick="switchTab(event, 'xml')">Sortie XML</button>
+      <button class="tab" onclick="switchTab(event, 'both')">Les deux</button>
+      <button class="tab" onclick="switchTab(event, 'opts')">Options</button>
+    </div>
+    <div class="tab-body">
+      <div class="tab-content active" id="tab-txt">
+        <div class="code-body">
+<span class="cmd">python</span> <span class="arg">main.py</span> <span class="flag">misc</span> <span class="flag">-t</span>
+<br>
+<span class="comment"># Résultat dans misc/output/txt/</span>
+<span class="out">  Boudin-Torres-2006.txt  ✓</span>
+<span class="out">  Das_Martins.txt         ✓</span>
+<span class="out">  Mikolov.txt             ✓</span>
+        </div>
+      </div>
+      <div class="tab-content" id="tab-xml">
+        <div class="code-body">
+<span class="cmd">python</span> <span class="arg">main.py</span> <span class="flag">misc</span> <span class="flag">-x</span>
+<br>
+<span class="comment"># Résultat dans misc/output/xml/</span>
+<span class="out">  Boudin-Torres-2006.xml  ✓</span>
+<span class="out">  Das_Martins.xml         ✓</span>
+<span class="out">  Mikolov.xml             ✓</span>
+        </div>
+      </div>
+      <div class="tab-content" id="tab-both">
+        <div class="code-body">
+<span class="cmd">python</span> <span class="arg">main.py</span> <span class="flag">misc</span> <span class="flag">-t</span> <span class="flag">-x</span>
+<br>
+<span class="comment"># Résultat dans misc/output/txt/ ET misc/output/xml/</span>
+<span class="out">  Format : TEXTE + XML</span>
+<span class="out">  Traités : 10/10</span>
+        </div>
+      </div>
+      <div class="tab-content" id="tab-opts">
+        <div class="code-body">
+<span class="comment"># Choisir l'outil de conversion</span>
+<span class="cmd">python</span> <span class="arg">main.py</span> <span class="flag">misc</span> <span class="flag">-x</span> <span class="flag">--outil pdf2txt</span>
+
+<span class="comment"># Aide complète</span>
+<span class="cmd">python</span> <span class="arg">main.py</span> <span class="flag">--help</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- FORMATS -->
+<section>
+  <div class="section-label">Sorties</div>
+  <h2>Formats de sortie</h2>
+
+  <h3 style="margin-bottom: 1rem; color: var(--text2); font-size: 0.9rem; font-family: 'JetBrains Mono', monospace;">TXT — Sprint 2</h3>
+  <div class="code-block reveal">
+    <div class="code-header">
+      <div class="code-dots"><div class="code-dot dot-red"></div><div class="code-dot dot-yellow"></div><div class="code-dot dot-green"></div></div>
+      <span class="code-lang">output/txt/Mikolov.txt</span>
+    </div>
+    <div class="code-body">
+<span class="out">Fichier : Mikolov.pdf</span>
+<span class="out">Titre : Efficient Estimation of Word Representations in Vector Space</span>
+<span class="out">Auteurs : Tomas Mikolov ; Kai Chen ; Greg Corrado ; Jeffrey Dean</span>
+<span class="out">Resume : We propose two novel model architectures...</span>
+    </div>
+  </div>
+
+  <h3 style="margin: 2rem 0 1rem; color: var(--text2); font-size: 0.9rem; font-family: 'JetBrains Mono', monospace;">XML — Sprint 3</h3>
+  <div class="xml-block reveal">
+<span class="xml-tag">&lt;?xml version="1.0" encoding="utf-8"?&gt;</span>
+<span class="xml-tag">&lt;article&gt;</span>
+  <span class="xml-tag">&lt;preamble&gt;</span><span class="xml-text">Mikolov.pdf</span><span class="xml-tag">&lt;/preamble&gt;</span>
+  <span class="xml-tag">&lt;titre&gt;</span><span class="xml-text">Efficient Estimation of Word Representations...</span><span class="xml-tag">&lt;/titre&gt;</span>
+  <span class="xml-tag">&lt;auteurs&gt;</span>
+    <span class="xml-tag">&lt;auteur&gt;</span>
+      <span class="xml-tag">&lt;name&gt;</span><span class="xml-text">Tomas Mikolov</span><span class="xml-tag">&lt;/name&gt;</span>
+      <span class="xml-tag">&lt;mail&gt;</span><span class="xml-text">tmikolov@google.com</span><span class="xml-tag">&lt;/mail&gt;</span>
+    <span class="xml-tag">&lt;/auteur&gt;</span>
+    <span class="xml-tag">&lt;auteur&gt;</span>
+      <span class="xml-tag">&lt;name&gt;</span><span class="xml-text">Kai Chen</span><span class="xml-tag">&lt;/name&gt;</span>
+      <span class="xml-tag">&lt;mail&gt;</span><span class="xml-text">kaichen@google.com</span><span class="xml-tag">&lt;/mail&gt;</span>
+    <span class="xml-tag">&lt;/auteur&gt;</span>
+  <span class="xml-tag">&lt;/auteurs&gt;</span>
+  <span class="xml-tag">&lt;abstract&gt;</span><span class="xml-text">We propose two novel model architectures...</span><span class="xml-tag">&lt;/abstract&gt;</span>
+  <span class="xml-tag">&lt;biblio&gt;</span><span class="xml-text">[1] Y. Bengio, R. Ducharme... [2] ...</span><span class="xml-tag">&lt;/biblio&gt;</span>
+<span class="xml-tag">&lt;/article&gt;</span>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- TROUBLESHOOTING -->
+<section>
+  <div class="section-label">Dépannage</div>
+  <h2>Problèmes fréquents</h2>
+
+  <div style="display: flex; flex-direction: column; gap: 1rem;" class="reveal">
+    <div class="arch-card">
+      <div style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--red); margin-bottom: 0.5rem;">ModuleNotFoundError: No module named 'pdf_parser'</div>
+      <p style="font-size: 14px; margin: 0;">Lancer <code style="font-family: 'JetBrains Mono', monospace; color: var(--cyan);">main.py</code> depuis la racine du projet (le dossier qui <em>contient</em> le package <code style="font-family: 'JetBrains Mono', monospace; color: var(--cyan);">pdf_parser/</code>).</p>
+    </div>
+    <div class="arch-card">
+      <div style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--red); margin-bottom: 0.5rem;">pdftotext: command not found</div>
+      <p style="font-size: 14px; margin: 0;">Installer poppler : <code style="font-family: 'JetBrains Mono', monospace; color: var(--cyan);">sudo apt install poppler-utils</code>. Ou utiliser <code style="font-family: 'JetBrains Mono', monospace; color: var(--cyan);">--outil pdf2txt</code>.</p>
+    </div>
+    <div class="arch-card">
+      <div style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--red); margin-bottom: 0.5rem;">not well-formed (invalid token) dans le XML</div>
+      <p style="font-size: 14px; margin: 0;">Caractères de contrôle dans le PDF. Corrigé depuis le Sprint 3 par la fonction <code style="font-family: 'JetBrains Mono', monospace; color: var(--cyan);">_nettoyer_xml()</code>.</p>
+    </div>
+    <div class="arch-card">
+      <div style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--yellow); margin-bottom: 0.5rem;">Auteurs vides ou incorrects</div>
+      <p style="font-size: 14px; margin: 0;">PDF à double colonne ou sans couche texte. Essayer <code style="font-family: 'JetBrains Mono', monospace; color: var(--cyan);">--outil pdf2txt</code>.</p>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- CONTRIBUTEURS -->
+<section>
+  <div class="section-label">Équipe</div>
+  <h2>Contributeurs</h2>
+
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;" class="reveal">
+
+    <div class="arch-card" style="text-align: center; padding: 2rem 1.25rem;">
+      <div style="width: 56px; height: 56px; border-radius: 50%; background: rgba(88,166,255,0.15); border: 2px solid rgba(88,166,255,0.4); display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem; font-size: 1.2rem; font-weight: 800; color: var(--blue); font-family: 'JetBrains Mono', monospace;">CB</div>
+      <h3 style="margin-bottom: 0.25rem;">Clément Bouix</h3>
+      <div style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--blue); background: rgba(88,166,255,0.1); border: 1px solid rgba(88,166,255,0.25); padding: 3px 10px; border-radius: 100px; display: inline-block; margin-top: 0.25rem;">Scrum Master</div>
+    </div>
+
+    <div class="arch-card" style="text-align: center; padding: 2rem 1.25rem;">
+      <div style="width: 56px; height: 56px; border-radius: 50%; background: rgba(188,140,255,0.15); border: 2px solid rgba(188,140,255,0.4); display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem; font-size: 1.2rem; font-weight: 800; color: var(--purple); font-family: 'JetBrains Mono', monospace;">AB</div>
+      <h3 style="margin-bottom: 0.25rem;">Alexandre Boyer</h3>
+      <div style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--purple); background: rgba(188,140,255,0.1); border: 1px solid rgba(188,140,255,0.25); padding: 3px 10px; border-radius: 100px; display: inline-block; margin-top: 0.25rem;">Développeur</div>
+    </div>
+
+    <div class="arch-card" style="text-align: center; padding: 2rem 1.25rem;">
+      <div style="width: 56px; height: 56px; border-radius: 50%; background: rgba(63,185,80,0.15); border: 2px solid rgba(63,185,80,0.4); display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem; font-size: 1.2rem; font-weight: 800; color: var(--green); font-family: 'JetBrains Mono', monospace;">LN</div>
+      <h3 style="margin-bottom: 0.25rem;">Lionel Nkeoua</h3>
+      <div style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--green); background: rgba(63,185,80,0.1); border: 1px solid rgba(63,185,80,0.25); padding: 3px 10px; border-radius: 100px; display: inline-block; margin-top: 0.25rem;">Développeur</div>
+    </div>
+
+  </div>
+</section>
+
+<footer>
+  <p>PDF Parser · LIA Avignon Université · 2026 · Scrum Sprint 1→3</p>
+  <p style="margin-top: 0.5rem;">Clément Bouix · Alexandre Boyer · Lionel Nkeoua</p>
+  <p style="margin-top: 0.5rem;">Python 3.10+ · <span>pdftotext</span> · xml.etree · Aucune dépendance externe</p>
+</footer>
+
+<script>
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        e.target.classList.add('visible');
+      }
+    });
+  }, { threshold: 0.1 });
+
+  document.querySelectorAll('.reveal, .sprint').forEach(el => observer.observe(el));
+
+  function switchTab(e, id) {
+    const parent = e.target.closest('.tabbed');
+    parent.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    parent.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+    e.target.classList.add('active');
+    parent.querySelector('#tab-' + id).classList.add('active');
+  }
+</script>
+</body>
+</html>
