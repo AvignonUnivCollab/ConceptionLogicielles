@@ -27,7 +27,7 @@ _GRAD = [
     "\033[38;2;143;218;255m",
 ]
 
-_SOUS_TITRE  = "  Parseur d'articles scientifiques  ·  Sprint 2  ·  LIA Avignon"
+_SOUS_TITRE  = "  Parseur d'articles scientifiques  ·  Sprint 3  ·  LIA Avignon"
 _SEPARATEUR  = "  " + "─" * 50
 _HIDE_CURSOR = "\033[?25l"
 _SHOW_CURSOR = "\033[?25h"

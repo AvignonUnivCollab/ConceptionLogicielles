@@ -1,0 +1,5 @@
+Fichier : mikheev J02-3002.pdf
+Titre : Periods, Capitalized Words, etc. Andrei Mikheev∗
+Auteurs : We also investigated the portability to other languages and obtained encouraging results.
+Emails : mikheev@cogsci.ed.ac.uk
+Resume : 

@@ -25,8 +25,9 @@ FORMAT_TEXTE = "texte"
 FORMAT_XML   = "xml"
 
 
-def _preparer_dossier_sortie(dossier_pdf: str) -> str:
-    dossier_sortie = os.path.join(dossier_pdf, "output")
+def _preparer_dossier_sortie(dossier_pdf: str, format_sortie: str) -> str:
+    sous_dossier = "xml" if format_sortie == FORMAT_XML else "txt"
+    dossier_sortie = os.path.join(dossier_pdf, "output", sous_dossier)
     if os.path.exists(dossier_sortie):
         print(
             f"{C_JAUNE}Suppression de l'ancien dossier : {dossier_sortie}{RESET}",
@@ -125,7 +126,7 @@ def traiter_dossier(
         print("Aucun fichier PDF trouvé dans le dossier.", file=sys.stderr)
         return
 
-    dossier_sortie = _preparer_dossier_sortie(dossier_pdf)
+    dossier_sortie = _preparer_dossier_sortie(dossier_pdf, format_sortie)
     convertisseur  = ConverterFactory.create(outil)
     erreurs: list[str] = []
 
