@@ -24,15 +24,27 @@ from xml.dom import minidom
 from formatters.article_formatter import ArticleFormatter
 
 
-def _une_ligne(texte: str) -> str:
-    """Compresse un texte multi-lignes en une seule ligne."""
+# Caractères interdits en XML 1.0 (hors tab, LF, CR)
+_CARACTERES_INVALIDES_XML = re.compile(
+    r"[\x00-\x08\x0B\x0C\x0E-\x1F\x7F\uFFFE\uFFFF]"
+)
+
+
+def _nettoyer_xml(texte: str) -> str:
+    """
+    Supprime les caractères invalides en XML 1.0 et compresse
+    le texte en une seule ligne.
+    """
+    texte = _CARACTERES_INVALIDES_XML.sub("", texte)
     return re.sub(r"\s+", " ", texte).strip()
 
 
 def _prettify(element: ET.Element) -> str:
-    """Retourne le XML indenté en utf-8."""
-    brut = ET.tostring(element, encoding="unicode")
-    reparsed = minidom.parseString(brut)
+    """Retourne le XML indenté."""
+    brut = ET.tostring(element, encoding="unicode", xml_declaration=False)
+    # Nettoyage de sécurité sur la chaîne brute entière
+    brut = _CARACTERES_INVALIDES_XML.sub("", brut)
+    reparsed = minidom.parseString(f'<?xml version="1.0" encoding="utf-8"?>{brut}')
     return reparsed.toprettyxml(indent="  ", encoding=None)
 
 
@@ -42,22 +54,17 @@ def _construire_auteurs(
 ) -> list[dict[str, str]]:
     """
     Associe chaque nom d'auteur à un email si possible.
-
     Les noms sont séparés par ' ; ' (format produit par article_parser).
-    Les emails sont associés dans l'ordre d'apparition.
     Si moins d'emails que d'auteurs, les auteurs restants ont un email vide.
     """
     if not noms_bruts.strip():
         return []
 
     noms = [n.strip() for n in noms_bruts.split(";") if n.strip()]
-    auteurs = []
-    for i, nom in enumerate(noms):
-        auteurs.append({
-            "name": nom,
-            "mail": emails[i] if i < len(emails) else "",
-        })
-    return auteurs
+    return [
+        {"name": nom, "mail": emails[i] if i < len(emails) else ""}
+        for i, nom in enumerate(noms)
+    ]
 
 
 class XmlFormatter(ArticleFormatter):
@@ -67,44 +74,29 @@ class XmlFormatter(ArticleFormatter):
     """
 
     def __init__(self, emails: list[str] | None = None):
-        """
-        :param emails: liste des emails extraits du document,
-                       dans l'ordre d'apparition.
-        """
         self._emails: list[str] = emails or []
 
     def format(self, sections: dict[str, str], nom_fichier: str) -> str:
-        """
-        Retourne une chaîne XML utf-8 représentant l'article.
-        """
+        """Retourne une chaîne XML utf-8 représentant l'article."""
         article = ET.Element("article")
 
-        # <preamble>
         ET.SubElement(article, "preamble").text = nom_fichier
 
-        # <titre>
-        ET.SubElement(article, "titre").text = _une_ligne(
+        ET.SubElement(article, "titre").text = _nettoyer_xml(
             sections.get("titre", "")
         )
 
-        # <auteurs>
         auteurs_el = ET.SubElement(article, "auteurs")
-        auteurs_data = _construire_auteurs(
-            sections.get("auteurs", ""),
-            self._emails,
-        )
-        for auteur in auteurs_data:
+        for auteur in _construire_auteurs(sections.get("auteurs", ""), self._emails):
             auteur_el = ET.SubElement(auteurs_el, "auteur")
-            ET.SubElement(auteur_el, "name").text = auteur["name"]
+            ET.SubElement(auteur_el, "name").text = _nettoyer_xml(auteur["name"])
             ET.SubElement(auteur_el, "mail").text = auteur["mail"]
 
-        # <abstract>
-        ET.SubElement(article, "abstract").text = _une_ligne(
+        ET.SubElement(article, "abstract").text = _nettoyer_xml(
             sections.get("abstract", "")
         )
 
-        # <biblio>
-        ET.SubElement(article, "biblio").text = _une_ligne(
+        ET.SubElement(article, "biblio").text = _nettoyer_xml(
             sections.get("bibliographie", "")
         )
 
