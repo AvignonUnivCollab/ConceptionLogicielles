@@ -1,8 +1,34 @@
-# Parseur d'articles scientifiques (Projet Scrum - Sprint 1 & 2)
+# Parseur d'articles scientifiques (Projet Scrum - Sprint 1, 2 & 3)
 
 ## Description
 
-Ce projet consiste en un analyseur (parseur) d'articles scientifiques au format PDF. Il convertit un article PDF en un fichier texte brut structuré selon les sections canoniques (Titre, Auteurs, Abstract, Introduction, Corps, Conclusion, Discussion, Bibliographie).
+Ce projet consiste en un analyseur (parseur) d'articles scientifiques au format PDF. Il convertit un article PDF en un fichier texte structuré (`.txt`) et/ou XML (`.xml`) selon les sections canoniques (Titre, Auteurs, Emails, Abstract, Introduction, Corps, Conclusion, Discussion, Bibliographie).
+
+## Architecture
+
+```
+main.py                        ← point d'entrée CLI (-t / -x / les deux)
+batch_processor.py             ← orchestration par lot d'un dossier PDF
+
+converters/
+  pdf_converter.py             ← interface PdfConverter + ConverterFactory
+  benchmark.py                 ← comparaison des deux outils
+
+parsers/
+  article_parser.py            ← parsing en 3 passes (titre, auteurs, sections)
+  email_extractor.py           ← extraction des emails (module dédié Sprint 3)
+  section_detector.py          ← détection des titres de section
+  section_taxonomy.py          ← mots-clés par section (OCP — seul fichier à modifier)
+  text_cleaner.py              ← nettoyage du texte brut
+
+formatters/
+  article_formatter.py         ← interface ArticleFormatter + Sprint2Formatter (.txt)
+  xml_formatter.py             ← XmlFormatter (.xml) — Sprint 3
+
+utils/
+  banner.py                    ← bannière CLI
+  colors.py                    ← constantes couleurs ANSI
+```
 
 ## Architecture / Choix techniques du Sprint 1
 
@@ -12,41 +38,86 @@ L'objectif du Sprint 1 était d'évaluer deux extracteurs de texte, `pdftotext` 
 - La bonne séparation des mots (détection de mots "collés").
 - La conservation de la hiérarchie pour extraire les sections.
 
-**Verdict** : `pdftotext` (utilisé avec le paramètre `-layout`) est l'outil retenu. Il a montré de meilleurs résultats qualitatifs, car il préserve de manière optimale la structure du document original (les colonnes sont bien réparties, évitant l'entremêlement des phrases) et produit significativement moins de problèmes de "mots collés" par rapport à `pdf2txt.py`.
+**Verdict** : `pdftotext` (utilisé avec le paramètre `-layout`) est l'outil retenu. Il préserve la structure du document original et produit significativement moins de problèmes de "mots collés" par rapport à `pdf2txt.py`.
 
 ## Nouveautés du Sprint 2
 
 ### Corrections
 
 - **Fix bug `break` (passe 1)** : La boucle de détection du titre s'arrêtait à la première ligne non vide, même si ce n'était pas un titre valide. Corrigé en déplaçant le `break` à l'intérieur du `if`.
-- **Optimisation passe 2** : La passe de détection des sections démarre maintenant après le titre (`idx_fin_titre`) pour éviter de re-parcourir les premières lignes inutilement.
+- **Optimisation passe 2** : La passe de détection des sections démarre maintenant après le titre (`idx_fin_titre`).
 
 ### Nouvelles fonctionnalités
 
-- **Détection des auteurs (passe 1.5)** : Extraction des auteurs depuis les lignes situées entre le titre et l'abstract. L'heuristique filtre les affiliations (université, département, adresses email) et retient les lignes de noms propres capitalisés séparés par virgules, `and` ou points médians.
-- **Format de sortie Sprint 2** : Chaque fichier de sortie commence maintenant par 4 lignes normalisées (une par champ) :
+- **Détection des auteurs (passe 1.5)** : Extraction des auteurs depuis les lignes situées entre le titre et l'abstract.
+- **Format de sortie Sprint 2** :
   ```
   Fichier : article.pdf
   Titre : Titre de l'article
   Auteurs : Prénom Nom, Prénom Nom
   Resume : Texte de l'abstract sur une seule ligne...
   ```
-  Suivi du format détaillé complet (toutes les sections indentées).
+
+## Nouveautés du Sprint 3
+
+### Corrections
+
+- **Fix `detecter_section`** : Le pattern de détection exige désormais une majuscule en début de ligne, évitant de classer à tort une continuation de titre comme section.
+- **Fix écrasement des emails** : La section `emails` est protégée de l'écrasement par la passe 2.
+
+### Nouvelles fonctionnalités
+
+- **Module `email_extractor.py`** : Module dédié à l'extraction des emails, supportant les formats :
+  - Simple : `alice@labo.fr`
+  - Virgule/parenthèse finale : `alice@labo.fr,` / `(alice@labo.fr).`
+  - Email coupé sur deux lignes (PDF) : `torres@univ-` + `avignon.fr`
+  - Groupé avec accolades : `{alice, bob}@labo.fr`
+  - Groupé avec parenthèses : `(alice,bob)@lif.univ-mrs.fr`
+  - Notes de bas de page IEEE
+
+- **`XmlFormatter`** : Nouvelle sortie XML UTF-8 avec la structure :
+  ```xml
+  <article>
+    <preamble>article.pdf</preamble>
+    <titre>Titre de l'article</titre>
+    <auteurs>
+      <auteur>
+        <name>Prénom Nom</name>
+        <mail>alice@labo.fr</mail>
+      </auteur>
+    </auteurs>
+    <abstract>Résumé...</abstract>
+    <biblio>Références bibliographiques...</biblio>
+  </article>
+  ```
+
+- **Arguments `-t` / `-x`** : Choix du format de sortie au lancement. Les deux peuvent être combinés.
+
+- **Format de sortie `.txt` mis à jour** :
+  ```
+  Fichier : article.pdf
+  Titre : Titre de l'article
+  Auteurs : Prénom Nom, Prénom Nom
+  Emails : alice@labo.fr ; bob@labo.fr
+  Resume : Texte de l'abstract sur une seule ligne...
+  ```
 
 ## Comment exécuter le programme
 
-1. **Prérequis** : Avoir Python 3 installé et la commande `pdftotext` (issue de _poppler-utils_) accessible dans votre système. La commande `pdf2txt.py` (issue de _pdfminer.six_) est également recommandée.
+**Prérequis** : Python 3 et `pdftotext` (poppler-utils) accessible dans le PATH.
 
-2. **Exécuter le script sur un fichier PDF** :
+```bash
+# Sortie texte .txt uniquement (défaut si aucun argument)
+python main.py <dossier> -t
 
-   ```bash
-   python main.py fichier.pdf
-   ```
+# Sortie XML .xml uniquement
+python main.py <dossier> -x
 
-   Cela va générer le fichier texte dans le même dossier (par exemple, `fichier_parse.txt`).
+# Les deux formats simultanément
+python main.py <dossier> -t -x
 
-3. **Options disponibles** :
-   - `--outil [pdftotext|pdf2txt]` : Forcer l'outil de conversion (défaut : `pdftotext`).
-   - `--comparer` : Lancer l'analyse comparative entre les deux outils.
-   - `--stats` : Afficher les statistiques de l'extraction.
-   - `-o fichier.txt` : Définir manuellement le nom du fichier de sortie.
+# Choisir l'outil de conversion
+python main.py <dossier> -t --outil pdf2txt
+```
+
+Les fichiers générés sont placés dans `<dossier>/output/`.
