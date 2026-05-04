@@ -1,5 +1,0 @@
-Fichier : Torres-moreno1998.pdf
-Titre : LETTER Communicated by Scott Fahlman Efficient Adaptive Learning for Classification Tasks with
-Auteurs : Binary Units ; Département de Recherche Fondamentale sur la Matière Condensée, CEA Grenoble, ; An implementation for problems with more than two classes, valid
-Emails : 
-Resume : 
