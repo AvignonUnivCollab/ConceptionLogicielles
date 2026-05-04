@@ -76,6 +76,7 @@ L'objectif du Sprint 1 était d'évaluer deux extracteurs de texte, `pdftotext` 
   - Notes de bas de page IEEE
 
 - **`XmlFormatter`** : Nouvelle sortie XML UTF-8 avec la structure :
+
   ```xml
   <article>
     <preamble>article.pdf</preamble>
