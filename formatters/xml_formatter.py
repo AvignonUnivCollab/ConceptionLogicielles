@@ -1,5 +1,5 @@
 """
-Formateur de sortie XML pour le Sprint 3.
+Formateur de sortie XML pour le Sprint 4.
 
 Produit un fichier XML utf-8 conforme à la structure demandée :
   <article>
@@ -9,10 +9,15 @@ Produit un fichier XML utf-8 conforme à la structure demandée :
       <auteur>
         <name>...</name>
         <mail>...</mail>
+        <affiliation>...</affiliation>
       </auteur>
       ...
     </auteurs>
     <abstract>...</abstract>
+    <introduction>...</introduction>
+    <corps>...</corps>
+    <conclusion>...</conclusion>
+    <discussion>...</discussion>
     <biblio>...</biblio>
   </article>
 """
@@ -94,6 +99,22 @@ class XmlFormatter(ArticleFormatter):
 
         ET.SubElement(article, "abstract").text = _nettoyer_xml(
             sections.get("abstract", "")
+        )
+
+        ET.SubElement(article, "introduction").text = _nettoyer_xml(
+            sections.get("introduction", "")
+        )
+
+        ET.SubElement(article, "corps").text = _nettoyer_xml(
+            sections.get("corps", "")
+        )
+
+        ET.SubElement(article, "conclusion").text = _nettoyer_xml(
+            sections.get("conclusion", "")
+        )
+
+        ET.SubElement(article, "discussion").text = _nettoyer_xml(
+            sections.get("discussion", "")
         )
 
         ET.SubElement(article, "biblio").text = _nettoyer_xml(
