@@ -4,7 +4,7 @@ Traitement par lot d'un dossier de fichiers PDF.
 Responsabilité unique : orchestrer la conversion, le parsing et
 l'écriture des fichiers de sortie pour chaque PDF d'un dossier.
 
-Sprint 3 : support du format de sortie (-t texte | -x XML).
+Sprint 4 : support du format de sortie (-t texte | -x XML).
 """
 
 import os
@@ -13,7 +13,6 @@ import sys
 
 from converters.pdf_converter import PdfConverter, ConverterFactory
 from parsers.article_parser import parser_article
-from parsers.email_extractor import extraire_emails
 from formatters.article_formatter import Sprint2Formatter
 from formatters.xml_formatter import XmlFormatter
 from utils.colors import (
@@ -68,8 +67,7 @@ def _traiter_un_pdf(
         sections   = parser_article(texte_brut)
 
         if format_sortie == FORMAT_XML:
-            emails    = extraire_emails(texte_brut)
-            formatter = XmlFormatter(emails=emails)
+            formatter = XmlFormatter()
         else:
             formatter = Sprint2Formatter()
 

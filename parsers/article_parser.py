@@ -169,6 +169,85 @@ def _extraire_auteurs(lignes: list[str], debut: int) -> str:
     return " ; ".join(auteur_lignes) if auteur_lignes else ""
 
 
+def _extraire_affiliations(lignes: list[str], debut: int) -> str:
+    """
+    Passe 1.7 : extrait les lignes d'affiliation institutionnelle.
+
+    Stratégie en deux phases :
+      Phase 1 (en-tête, 25 lignes) : formats ACL/Springer où les affiliations
+        apparaissent directement sous les auteurs, avant l'abstract.
+      Phase 2 (zone étendue, 120 lignes) : format IEEE uniquement via le
+        pattern "Auteur is with Institution" pour éviter les faux positifs
+        du texte de corps.
+
+    Les adresses email (complètes ou partielles) sont supprimées du résultat.
+    Les doublons sont supprimés.
+
+    Retourne une chaîne unique combinant toutes les affiliations trouvées,
+    séparées par ' ; '.
+    """
+    aff_lignes: list[str] = []
+    seen: set[str] = set()
+
+    def _ajouter(l: str) -> None:
+        # Supprimer les emails groupés {a,b}@domain et (a,b)@domain
+        l_clean = _MULTI_EMAIL_BRACES_RE.sub("", l)
+        l_clean = _MULTI_EMAIL_PARENS_RE.sub("", l_clean)
+        # Supprimer les emails standards
+        l_clean = _EMAIL_RE.sub("", l_clean)
+        # Supprimer les fragments "@domaine" résiduels (ex: "@lif.univ-mrs.fr")
+        l_clean = re.sub(r'@[\w\.\-]+', '', l_clean)
+        # Supprimer les ponctuations de groupage
+        l_clean = re.sub(r'[\(\)\[\]\{\}]', '', l_clean)
+        l_clean = re.sub(r'\s+', ' ', l_clean).strip().rstrip('.,;')
+        if l_clean and len(l_clean) > 4 and l_clean not in seen:
+            seen.add(l_clean)
+            aff_lignes.append(l_clean)
+
+    def _colonne_gauche(ligne: str) -> str:
+        """Extrait uniquement la colonne gauche d'une ligne double-colonne.
+        Pour les lignes centrées (espaces initiaux), retourne le premier
+        fragment non vide après découpage sur les blocs d'espaces."""
+        for fragment in re.split(r'\s{4,}', ligne):
+            cleaned = fragment.strip()
+            if cleaned:
+                return cleaned
+        return ""
+
+    # Phase 1 : zone d'en-tête — s'arrête à l'abstract ou à une section
+    for i in range(debut, min(debut + 25, len(lignes))):
+        stripped = lignes[i].strip()
+        if not stripped:
+            continue
+        if detecter_section(stripped):
+            break
+        if re.match(r"^abstract[\s\.\—\–\:]?", stripped, re.IGNORECASE):
+            break
+        gauche = _colonne_gauche(lignes[i])
+        if _est_ligne_affiliation(gauche):
+            _ajouter(gauche)
+
+    if aff_lignes:
+        return " ; ".join(aff_lignes)
+
+    # Phase 2 : format IEEE — uniquement les lignes "Auteur is with Institution"
+    # On ne prend que la colonne gauche pour éviter le texte de corps (colonne droite).
+    # Le filtre "is with" évite de ramasser du texte de corps qui mentionne
+    # accidentellement des mots comme "university" ou "institute".
+    _ieee_aff_re = re.compile(r'\bis\s+with\b', re.IGNORECASE)
+    for i in range(debut + 25, min(debut + 120, len(lignes))):
+        stripped = lignes[i].strip()
+        if not stripped:
+            continue
+        if detecter_section(stripped) == "bibliographie":
+            break
+        gauche = _colonne_gauche(lignes[i])
+        if _est_ligne_affiliation(gauche) and _ieee_aff_re.search(gauche):
+            _ajouter(gauche)
+
+    return " ; ".join(aff_lignes)
+
+
 # Regex pour l'extraction des emails
 _EMAIL_RE              = re.compile(r'[\w\.\+\-]+@[\w\.\-]+\.[a-zA-Z]{2,}')
 _MULTI_EMAIL_BRACES_RE = re.compile(r'\{([^}]+)\}@([\w\.\-]+\.[a-zA-Z]{2,})')
@@ -298,13 +377,14 @@ def parser_article(texte: str) -> dict[str, str]:
     lignes = texte.split("\n")
 
     titre, idx_fin_titre = _extraire_titre(lignes)
-    sections["titre"]   = titre
-    sections["auteurs"] = _extraire_auteurs(lignes, idx_fin_titre)
-    sections["emails"]  = " ; ".join(_extraire_emails(lignes, idx_fin_titre))
+    sections["titre"]        = titre
+    sections["auteurs"]      = _extraire_auteurs(lignes, idx_fin_titre)
+    sections["emails"]       = " ; ".join(_extraire_emails(lignes, idx_fin_titre))
+    sections["affiliations"] = _extraire_affiliations(lignes, idx_fin_titre)
 
     sections_corps = _extraire_sections(lignes[idx_fin_titre:])
     for cle, contenu in sections_corps.items():
-        if cle not in ("titre", "auteurs", "emails"):
+        if cle not in ("titre", "auteurs", "emails", "affiliations"):
             sections[cle] = contenu
 
     #normaliser les sauts de ligne

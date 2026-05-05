@@ -54,6 +54,7 @@ SECTIONS_ORDRE: list[str] = [
     "titre",
     "auteurs",
     "emails",
+    "affiliations",
     "abstract",
     "introduction",
     "corps",

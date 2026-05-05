@@ -55,31 +55,36 @@ def _prettify(element: ET.Element) -> str:
 
 def _construire_auteurs(
     noms_bruts: str,
-    emails: list[str],
+    emails_bruts: str,
+    affiliation: str = "",
 ) -> list[dict[str, str]]:
     """
-    Associe chaque nom d'auteur à un email si possible.
-    Les noms sont séparés par ' ; ' (format produit par article_parser).
+    Associe chaque nom d'auteur à un email et une affiliation.
+    Les noms et emails sont séparés par ' ; ' (format produit par article_parser).
     Si moins d'emails que d'auteurs, les auteurs restants ont un email vide.
+    L'affiliation est partagée par tous les auteurs (bloc commun de l'article).
     """
     if not noms_bruts.strip():
         return []
 
-    noms = [n.strip() for n in noms_bruts.split(";") if n.strip()]
+    noms   = [n.strip() for n in noms_bruts.split(";") if n.strip()]
+    emails = [e.strip() for e in emails_bruts.split(";") if e.strip()] if emails_bruts else []
     return [
-        {"name": nom, "mail": emails[i] if i < len(emails) else ""}
+        {
+            "name":        nom,
+            "mail":        emails[i] if i < len(emails) else "",
+            "affiliation": affiliation,
+        }
         for i, nom in enumerate(noms)
     ]
 
 
 class XmlFormatter(ArticleFormatter):
     """
-    Formateur Sprint 3 : produit un fichier XML structuré.
+    Formateur Sprint 4 : produit un fichier XML structuré.
     Hérite de ArticleFormatter (OCP — extensible sans modifier l'existant).
+    Les emails et affiliations sont lus directement depuis le dict sections.
     """
-
-    def __init__(self, emails: list[str] | None = None):
-        self._emails: list[str] = emails or []
 
     def format(self, sections: dict[str, str], nom_fichier: str) -> str:
         """Retourne une chaîne XML utf-8 représentant l'article."""
@@ -91,11 +96,17 @@ class XmlFormatter(ArticleFormatter):
             sections.get("titre", "")
         )
 
+        affiliation = _nettoyer_xml(sections.get("affiliations", ""))
         auteurs_el = ET.SubElement(article, "auteurs")
-        for auteur in _construire_auteurs(sections.get("auteurs", ""), self._emails):
+        for auteur in _construire_auteurs(
+            sections.get("auteurs", ""),
+            sections.get("emails", ""),
+            affiliation,
+        ):
             auteur_el = ET.SubElement(auteurs_el, "auteur")
             ET.SubElement(auteur_el, "name").text = _nettoyer_xml(auteur["name"])
             ET.SubElement(auteur_el, "mail").text = auteur["mail"]
+            ET.SubElement(auteur_el, "affiliation").text = auteur["affiliation"]
 
         ET.SubElement(article, "abstract").text = _nettoyer_xml(
             sections.get("abstract", "")
