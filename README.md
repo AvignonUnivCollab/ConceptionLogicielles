@@ -1,4 +1,4 @@
-# Parseur d'articles scientifiques (Projet Scrum - Sprint 1, 2 & 3)
+# Parseur d'articles scientifiques (Projet Scrum - Sprint 1 à 4)
 
 ## Description
 
