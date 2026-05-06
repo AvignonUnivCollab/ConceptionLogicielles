@@ -44,6 +44,39 @@ def _preparer_dossier_sortie(dossier_pdf: str, format_sortie: str) -> str:
 def _lister_pdfs(dossier: str) -> list[str]:
     return sorted(f for f in os.listdir(dossier) if f.lower().endswith(".pdf"))
 
+def selectionner_fichiers(pdfs):
+    print("\nFichiers PDF détectés :")
+    for i, nom in enumerate(pdfs, 1):
+        print(f"[{i}] {nom}")
+    selection_input = input("\nEntrez les numéros à traiter (ex: 1,3,5-10) ou 'all' : ").strip().lower()
+    if selection_input == 'all':
+        return pdfs
+    if not selection_input:
+        return []
+
+    indices_choisis = set()
+    parties = selection_input.split(',')
+    for partie in parties:
+        partie = partie.strip()
+        if '-' in partie:
+            try:
+                debut, fin = map(int, partie.split('-'))
+                if debut > fin:
+                    debut, fin = fin, debut
+                # +1 pour inclure la borne de fin, max pour éviter les erreurs
+                indices_choisis.update(range(debut, fin + 1))
+            except ValueError as e:
+                print(f"{C_ROUGE}✗ ERREUR : {e}{RESET}", file=sys.stderr)
+                continue
+        else:
+            try:
+                indices_choisis.add(int(partie))
+            except ValueError as e:
+                print(f"{C_ROUGE}✗ ERREUR : {e}{RESET}", file=sys.stderr)
+                continue
+
+    # L'utilisateur voit de 1 à N, le Python liste de 0 à N-1
+    return [pdfs[i-1] for i in indices_choisis if 0 < i <= len(pdfs)]
 
 def _traiter_un_pdf(
     nom_pdf: str,
@@ -87,6 +120,7 @@ def _traiter_un_pdf(
 def _afficher_bilan(
     nb_ok: int,
     nb_total: int,
+    nb_ignore: int,
     erreurs: list[str],
     dossier_sortie: str,
     format_sortie: str,
@@ -95,6 +129,7 @@ def _afficher_bilan(
     print(
         f"{BOLD}Traités : {C_VERT}{nb_ok}{RESET}{BOLD}/{nb_total}{RESET}  |  "
         f"Erreurs : {C_ROUGE if erreurs else C_VERT}{len(erreurs)}{RESET}  |  "
+        f"Ignorés : {C_GRIS}{nb_ignore}{RESET}  |  "
         f"Format : {C_CYAN}{format_sortie.upper()}{RESET}",
         file=sys.stderr,
     )
@@ -124,11 +159,16 @@ def traiter_dossier(
         print("Aucun fichier PDF trouvé dans le dossier.", file=sys.stderr)
         return
 
+    pdfs_a_traiter = selectionner_fichiers(pdfs)
+    if not pdfs_a_traiter:
+        print("Aucun fichier PDF sélectionné.", file=sys.stderr)
+        return
+
     dossier_sortie = _preparer_dossier_sortie(dossier_pdf, format_sortie)
     convertisseur  = ConverterFactory.create(outil)
     erreurs: list[str] = []
 
-    for nom_pdf in pdfs:
+    for nom_pdf in pdfs_a_traiter:
         ok = _traiter_un_pdf(
             nom_pdf, dossier_pdf, dossier_sortie,
             convertisseur, format_sortie,
@@ -137,6 +177,6 @@ def traiter_dossier(
             erreurs.append(nom_pdf)
 
     _afficher_bilan(
-        len(pdfs) - len(erreurs), len(pdfs),
+        len(pdfs_a_traiter) - len(erreurs), len(pdfs_a_traiter), len(pdfs) - len(pdfs_a_traiter), 
         erreurs, dossier_sortie, format_sortie,
     )
