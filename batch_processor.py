@@ -44,39 +44,61 @@ def _preparer_dossier_sortie(dossier_pdf: str, format_sortie: str) -> str:
 def _lister_pdfs(dossier: str) -> list[str]:
     return sorted(f for f in os.listdir(dossier) if f.lower().endswith(".pdf"))
 
-def selectionner_fichiers(pdfs):
-    print("\nFichiers PDF détectés :")
+def selectionner_fichiers(pdfs: list[str], dossier_pdf: str) -> list[str]:
+    """Affiche le menu de sélection et retourne la liste des PDFs choisis."""
+    n = len(pdfs)
+    largeur_num = len(str(n))
+
+    print(f"\n{C_BLEU}{BOLD}┌─ PDFs disponibles{'─' * 30}┐{RESET}", file=sys.stderr)
     for i, nom in enumerate(pdfs, 1):
-        print(f"[{i}] {nom}")
-    selection_input = input("\nEntrez les numéros à traiter (ex: 1,3,5-10) ou 'all' : ").strip().lower()
-    if selection_input == 'all':
-        return pdfs
-    if not selection_input:
+        num = f"{i:>{largeur_num}}"
+        print(f"{C_BLEU}│{RESET}  {C_GRIS}[{C_CYAN}{num}{C_GRIS}]{RESET}  {nom}", file=sys.stderr)
+    print(f"{C_BLEU}└{'─' * 49}┘{RESET}", file=sys.stderr)
+    print(
+        f"\n{C_GRIS}  Syntaxe : {C_CYAN}1,3{C_GRIS}  ·  {C_CYAN}2-5{C_GRIS}  ·  "
+        f"{C_CYAN}1,4-7,10{C_GRIS}  ·  {C_CYAN}*{C_GRIS} pour tout sélectionner{RESET}",
+        file=sys.stderr,
+    )
+
+    try:
+        selection_input = input(f"\n  {BOLD}Votre sélection :{RESET} ").strip()
+    except (EOFError, KeyboardInterrupt):
+        print(f"\n{C_JAUNE}Annulé.{RESET}", file=sys.stderr)
         return []
 
-    indices_choisis = set()
-    parties = selection_input.split(',')
-    for partie in parties:
+    if selection_input in ('*', 'all', ''):
+        if selection_input == '':
+            print(f"{C_JAUNE}  Aucune sélection → tous les fichiers traités.{RESET}", file=sys.stderr)
+        return pdfs
+
+    indices_choisis: set[int] = set()
+    for partie in selection_input.split(','):
         partie = partie.strip()
+        if not partie:
+            continue
         if '-' in partie:
             try:
-                debut, fin = map(int, partie.split('-'))
+                debut, fin = map(int, partie.split('-', 1))
                 if debut > fin:
                     debut, fin = fin, debut
-                # +1 pour inclure la borne de fin, max pour éviter les erreurs
                 indices_choisis.update(range(debut, fin + 1))
-            except ValueError as e:
-                print(f"{C_ROUGE}✗ ERREUR : {e}{RESET}", file=sys.stderr)
-                continue
+            except ValueError:
+                print(f"{C_ROUGE}  Ignoré (plage invalide) : « {partie} »{RESET}", file=sys.stderr)
         else:
             try:
                 indices_choisis.add(int(partie))
-            except ValueError as e:
-                print(f"{C_ROUGE}✗ ERREUR : {e}{RESET}", file=sys.stderr)
-                continue
+            except ValueError:
+                print(f"{C_ROUGE}  Ignoré (valeur invalide) : « {partie} »{RESET}", file=sys.stderr)
 
-    # L'utilisateur voit de 1 à N, le Python liste de 0 à N-1
-    return [pdfs[i-1] for i in indices_choisis if 0 < i <= len(pdfs)]
+    choix = [pdfs[i - 1] for i in sorted(indices_choisis) if 0 < i <= n]
+
+    if not choix:
+        print(f"{C_ROUGE}  Aucun fichier valide sélectionné.{RESET}", file=sys.stderr)
+    else:
+        noms = ", ".join(f"{C_CYAN}{p}{RESET}" for p in choix)
+        print(f"\n  {C_VERT}✓{RESET} Sélection : {noms}\n", file=sys.stderr)
+
+    return choix
 
 def _traiter_un_pdf(
     nom_pdf: str,
@@ -159,7 +181,7 @@ def traiter_dossier(
         print("Aucun fichier PDF trouvé dans le dossier.", file=sys.stderr)
         return
 
-    pdfs_a_traiter = selectionner_fichiers(pdfs)
+    pdfs_a_traiter = selectionner_fichiers(pdfs, dossier_pdf)
     if not pdfs_a_traiter:
         print("Aucun fichier PDF sélectionné.", file=sys.stderr)
         return
