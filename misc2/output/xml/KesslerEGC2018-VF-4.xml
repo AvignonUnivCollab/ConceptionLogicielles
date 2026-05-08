@@ -1,0 +1,24 @@
+<?xml version="1.0" ?>
+<article>
+  <preamble>KesslerEGC2018-VF-4.pdf</preamble>
+  <titre>Et si les réseaux sociaux pouvaient nous aider dans nos choix de carrière?</titre>
+  <auteurs>
+    <auteur>
+      <name>Rémy Kessler∗∗ , Guy Lapalme∗ , Fabrizio Gotti∗ , Abdessamad Outerqiss∗ , Philippe Langlais∗</name>
+      <mail>lapalme@iro.umontreal.ca</mail>
+      <affiliation>Université de Montréal ; C.P. 6128, succursale Centre-ville, Montréal H3C 3J7, Canada ; IRISA - UMR 6074, Université de Bretagne-Sud ; 56017 Vannes, France</affiliation>
+    </auteur>
+    <auteur>
+      <name>Résumé. Dans cet article, nous présentons une méthode d’analyse de corpus</name>
+      <mail>gottif@iro.umontreal.ca</mail>
+      <affiliation>Université de Montréal ; C.P. 6128, succursale Centre-ville, Montréal H3C 3J7, Canada ; IRISA - UMR 6074, Université de Bretagne-Sud ; 56017 Vannes, France</affiliation>
+    </auteur>
+  </auteurs>
+  <abstract>Summary In this work, we describe the analysis methods used in the creation of two original visual- ization interfaces in the field of e-recruitment. These interfaces were designed using millions of user profiles gathered on social networks as well as thousands of job offers collected over the internet. This work also describes the necessary steps for the implementation of the inter- faces. The first visualization is a dynamic map indicating which jobs are in-demand, in which field and in which region. The second visualization tool highlights career paths and allows the user to observe the perspectives as well as the antecedents for each job considered.</abstract>
+  <introduction/>
+  <corps/>
+  <conclusion/>
+  <discussion/>
+  <biblio/>
+</article>
+
