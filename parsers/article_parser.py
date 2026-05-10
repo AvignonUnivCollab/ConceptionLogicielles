@@ -28,8 +28,6 @@ def _est_titre_article(ligne: str) -> bool:
     # Exclure les dates, numéros de volume, lignes d'affiliation
     if re.search(r"\d{4}|\bvol\b|\bno\b|@|universit|institute|department", s, re.IGNORECASE):
         return False
-    if not re.match(r"^[A-ZÀ-Ÿ0-9]", s):
-        return False
     mots = s.split()
     return 2 <= len(mots) <= 20
 
@@ -84,15 +82,6 @@ def _est_ligne_auteurs(ligne: str) -> bool:
     if _est_ligne_date_ou_volume(l):
         return False
 
-    # Cas pdftotext -layout : plusieurs auteurs alignés en colonnes
-    fragments = [f.strip() for f in re.split(r"\s{4,}", l) if f.strip()]
-    if len(fragments) >= 2:
-        def _frag_nom(f: str) -> bool:
-            mots = f.split()
-            return 1 <= len(mots) <= 4 and all(re.match(r"^[A-ZÀ-Ÿ][\wÀ-ÿ\-\.∗†\u0300-\u036f]+$", m) for m in mots)
-        if sum(1 for f in fragments if _frag_nom(f)) >= 2:
-            return True
-
     # Nettoyer les exposants d'affiliation avant d'analyser (¹²³⁴ ou 1,2)
     l_clean = re.sub(r"[¹²³⁴⁵⁶⁷⁸⁹⁰\u00B9\u00B2\u00B3]", "", l)
     l_clean = re.sub(r"\s*\(\s*B\s*\)", "", l_clean)  # (B) = corresponding author Springer
@@ -102,110 +91,54 @@ def _est_ligne_auteurs(ligne: str) -> bool:
         return True
 
     # Nom simple : Prénom [Initiale.] Nom (2 à 5 mots en majuscule)
-    if re.match(r"^([A-ZÀ-Ÿ][\wÀ-ÿ\u0300-\u036f\-]+[\s\.\,]*){2,5}$", l_clean.strip()):
+    if re.match(r"^([A-ZÀ-Ÿ][a-zà-ÿ\-]+[\s\.\,]*){2,5}$", l_clean.strip()):
         return True
 
     return False
 
 
 # Les trois passes d'extraction
-def _ligne_bruit_avant_article(ligne: str) -> bool:
-    """Lignes fréquentes avant le vrai titre (Elsevier, journal, copyright...)."""
-    s = ligne.strip().lower()
-    return bool(re.search(
-        r"elsevier|sciencedirect|author.s personal copy|contents lists|journal homepage"
-        r"|copyright|all rights reserved|doi\.org|http://|https://|issn|isbn"
-        r"|information processing and management \d|article appeared in a journal"
-        r"|copy is furnished|non-commercial|websites are prohibited"
-        r"|personal website|institutional repository|authors requiring|authors are permitted|archiving|manuscript policies",
-        s,
-    ))
-
-
 def _extraire_titre(lignes: list[str]) -> tuple[str, int]:
     """
-    Cherche le titre dans l'en-tête réel de l'article.
-
-    Ancienne limite : le premier texte imprimé d'un PDF Elsevier était parfois
-    pris comme titre. Ici on privilégie les lignes situées juste avant Abstract
-    et on ignore les mentions éditeur/journal/copyright.
+    Passe 1 : cherche le titre dans les premières lignes.
+    Le titre s'arrête dès qu'une ligne ressemble à des auteurs,
+    une affiliation, une section ou un abstract.
+    Retourne (texte_titre, index_fin_titre).
     """
-    # On travaille surtout avant le premier abstract/introduction.
-    limite = min(len(lignes), 180)
-    for i, l in enumerate(lignes[:limite]):
-        sec = detecter_section(l)
-        if sec in ("abstract", "introduction"):
-            limite = i
-            break
-
-    candidats: list[tuple[int, str]] = []
-    for i, ligne in enumerate(lignes[:limite]):
+    for i, ligne in enumerate(lignes):
         stripped = ligne.strip()
-        # En double colonne, on ne considère que le fragment gauche pour le titre.
-        if re.search(r"\S\s{4,}\S", stripped):
-            stripped = re.split(r"\s{4,}", stripped)[0].strip()
-        if not stripped or _ligne_bruit_avant_article(stripped):
+        if not stripped:
             continue
-        if detecter_section(stripped):
-            continue
-        if _est_ligne_affiliation(stripped) or _est_ligne_date_ou_volume(stripped):
-            continue
-        if _est_ligne_auteurs(stripped):
-            continue
-        if not _est_titre_article(stripped):
+        if not _est_titre_article(ligne):
             continue
 
         titre_lignes = [stripped]
         j = i + 1
-        while j < limite and j < i + 5:
+        while j < len(lignes) and j < i + 6:
             nl = lignes[j].strip()
-            if re.search(r"\S\s{4,}\S", nl):
-                nl = re.split(r"\s{4,}", nl)[0].strip()
             if not nl:
                 j += 1
                 continue
-            if (_ligne_bruit_avant_article(nl) or detecter_section(nl)
-                    or (_est_ligne_auteurs(nl) and not re.search(r"[-‐‑‒–—]$", titre_lignes[-1].rstrip())) or _est_ligne_affiliation(nl)
-                    or _est_ligne_date_ou_volume(nl)):
+            # Arrêt si on détecte une section, un abstract, des auteurs ou une affiliation
+            if detecter_section(nl):
                 break
-            if _est_titre_article(nl) and not re.search(r"@|\d{4,}", nl):
+            if re.match(r"^abstract[\s\.\—\–\:]?", nl, re.IGNORECASE):
+                break
+            if _est_ligne_auteurs(nl):
+                break
+            if _est_ligne_affiliation(nl):
+                break
+            if _est_ligne_date_ou_volume(nl):
+                break
+            if _est_titre_article(lignes[j]) and not re.search(r"@|\d{4,}", nl):
                 titre_lignes.append(nl)
                 j += 1
             else:
                 break
-        candidats.append((i, " ".join(titre_lignes)))
 
-    if not candidats:
-        return "", 0
+        return " ".join(titre_lignes), j
 
-    def _score(c: tuple[int, str]) -> float:
-        i, t = c
-        tl = t.lower()
-        mots = t.split()
-        score = 0.0
-        # Un titre scientifique a souvent entre 5 et 18 mots.
-        score += min(len(mots), 18) * 2
-        if 4 <= len(mots) <= 18:
-            score += 12
-        if any(ch.islower() for ch in t):
-            score += 5
-        if ':' in t:
-            score += 2
-        if re.search(r"[.!?]", t):
-            score -= 20
-        # Les lignes trop génériques de l'en-tête ne sont pas des titres.
-        if re.search(r"article history|keywords|contact|available online|received|accepted|compiled", tl):
-            score -= 80
-        if re.search(r"(france|canada|india|usa|uk|germany|spain|italy)", tl):
-            score -= 25
-        if re.search(r"(university|universit|department|institute|laboratory|cnrs|inria)", tl):
-            score -= 35
-        # Léger bonus aux premières lignes, sans empêcher le cas Elsevier où le titre commence plus bas.
-        score -= i * 0.15
-        return score
-
-    idx, titre = max(candidats, key=_score)
-    return titre, idx + 1
+    return "", 0
 
 
 def _extraire_auteurs(lignes: list[str], debut: int) -> str:

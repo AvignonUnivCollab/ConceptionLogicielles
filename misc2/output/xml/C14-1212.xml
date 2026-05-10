@@ -1,16 +1,11 @@
 <?xml version="1.0" ?>
 <article>
   <preamble>C14-1212.pdf</preamble>
-  <titre/>
+  <titre>Learning to Distinguish Hypernyms and Co-Hyponyms</titre>
   <auteurs>
     <auteur>
-      <name>Learning to Distinguish Hypernyms and Co-Hyponyms</name>
-      <mail>billk@sussex.ac.uk</mail>
-      <affiliation>Department of Informatics ; University of Sussex ; juliewe,D.Clarke,J.P.Reffin,davidw</affiliation>
-    </auteur>
-    <auteur>
       <name>Julie Weeds, Daoud Clarke, Jeremy Reffin, David Weir and Bill Keller</name>
-      <mail/>
+      <mail>billk@sussex.ac.uk</mail>
       <affiliation>Department of Informatics ; University of Sussex ; juliewe,D.Clarke,J.P.Reffin,davidw</affiliation>
     </auteur>
     <auteur>
