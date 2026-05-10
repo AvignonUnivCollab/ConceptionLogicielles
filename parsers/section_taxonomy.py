@@ -1,42 +1,32 @@
-"""
-Taxonomie des sections d'un article scientifique.
+"""Taxonomie centralisée des sections d'un article scientifique."""
 
-Centralise les mots-clés et exclusions utilisés par le détecteur de sections.
-Modifier ce fichier suffit pour étendre ou adapter la classification (OCP).
-"""
-
-# Mots-clés associés à chaque section canonique
 MOTS_CLES: dict[str, list[str]] = {
-    "abstract": [
-        "abstract", "résumé", "summary",
-    ],
-    "introduction": [
-        "introduction",
-    ],
+    "abstract": ["abstract", "résumé", "resume", "summary"],
+    "introduction": ["introduction", "introductory remarks"],
     "corps": [
-        "method", "méthode", "approach", "approche", "background",
-        "related work", "related works", "travaux connexes",
-        "système", "system", "model", "modèle", "architecture",
+        "method", "methods", "méthode", "approach", "approche", "background",
+        "related work", "related works", "previous work", "travaux connexes",
+        "système", "system", "model", "models", "modèle", "architecture",
         "framework", "formulation", "methodology", "méthodologie",
-        "state of the art", "industrial context",
+        "state of the art", "industrial context", "experiments", "experiment",
+        "experimental setup", "evaluation", "results", "implementation",
+        "data", "dataset", "corpus", "resources", "discussion and results",
         "single-document summarization", "multi-document summarization",
         "sentence boundary detection", "rst spanish treebank",
         "resources and statistics", "word representations",
     ],
     "conclusion": [
-        "conclusion", "conclusions", "future work",
-        "conclusion and future", "conclusion and perspectives",
-        "discussion and future",
+        "conclusion", "conclusions", "concluding remarks", "final remarks",
+        "future work", "conclusion and future", "conclusions and future",
+        "conclusion and perspectives", "discussion and future",
     ],
-    "discussion": [
-        "discussion", "analyse", "analysis",
-    ],
+    "discussion": ["discussion", "general discussion", "analysis", "analyse"],
     "bibliographie": [
-        "reference", "references", "bibliograph", "bibliography",
+        "reference", "references", "bibliograph", "bibliography", "works cited",
+        "literature cited", "références", "references bibliographiques",
     ],
 }
 
-# Sous-sections à ignorer (classées dans "corps" mais non promues en section)
 SOUS_SECTIONS_CORPS: list[str] = [
     "early work", "machine learning", "naive-bayes", "hidden markov",
     "log-linear", "neural network", "deep natural", "abstraction",
@@ -49,16 +39,7 @@ SOUS_SECTIONS_CORPS: list[str] = [
     "window-boundaries", "general reference",
 ]
 
-# Ordre canonique des sections dans la sortie
 SECTIONS_ORDRE: list[str] = [
-    "titre",
-    "auteurs",
-    "emails",
-    "affiliations",
-    "abstract",
-    "introduction",
-    "corps",
-    "conclusion",
-    "discussion",
-    "bibliographie",
+    "titre", "auteurs", "emails", "affiliations", "abstract", "introduction",
+    "corps", "conclusion", "discussion", "bibliographie",
 ]
